@@ -49,6 +49,25 @@ visibles=$(awk -v pkg=$PKG '/Window #/ {mine = index($0, pkg) > 0} mine && /mVie
 echo "Mascotas visibles después de encender la pantalla: $visibles" | tee -a shots/bateria.txt
 echo "::notice title=Visibles::antes de apagar $antes, al encender $visibles"
 if [ "$visibles" -lt 4 ]; then echo "::error::Al encender la pantalla no volvieron las mascotas ($visibles visibles)"; fail=1; fi
+# Igual, pero con PIN como un teléfono de verdad: apagar, encender, escribir el PIN
+contar() { adb shell dumpsys window windows | awk -v pkg=$PKG '/Window #/ {mine = index($0, pkg) > 0} mine && /mViewVisibility=0x0/ {n++} END {print n+0}'; }
+adb shell locksettings set-pin 1234
+adb shell input keyevent KEYCODE_SLEEP
+sleep 8
+adb shell input keyevent KEYCODE_WAKEUP
+sleep 3
+bloqueada=$(contar)
+adb shell input keyevent KEYCODE_MENU
+sleep 2
+adb shell input text 1234
+adb shell input keyevent KEYCODE_ENTER
+sleep 6
+adb exec-out screencap -p > shots/despierta_pin.png
+con_pin=$(contar)
+adb shell locksettings clear --old 1234 || true
+echo "Con PIN: visibles con la pantalla bloqueada $bloqueada, al desbloquear $con_pin" | tee -a shots/bateria.txt
+echo "::notice title=Visibles con PIN::bloqueada $bloqueada, al desbloquear $con_pin"
+if [ "$con_pin" -lt 4 ]; then echo "::error::Al desbloquear con PIN no volvieron las mascotas ($con_pin visibles)"; fail=1; fi
 hz=100
 if [ -z "$c0$c1" ] || [ -z "$c2" ] || [ -z "$c3" ]; then
   echo "::warning::No se pudo medir el tiempo de CPU"; c0=0; c1=0; c2=0; c3=0
