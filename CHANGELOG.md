@@ -2,7 +2,11 @@
 
 Todos los cambios de la app, del más nuevo al más antiguo.
 
-## [Sin publicar]
+## 1.1 — 2026-10-21
+
+### Añadido
+- **Interruptor "Ahorro de batería"** en la pantalla principal: las mascotas se mueven a pasos, sin
+  deslizarse, aunque el teléfono no esté en ahorro de batería.
 
 ### Mejorado
 - **Batería**: con la pantalla apagada o bloqueada las mascotas se esperan quietas (no gastan nada)

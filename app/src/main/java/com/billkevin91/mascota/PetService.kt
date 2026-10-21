@@ -108,8 +108,9 @@ class PetService : Service() {
     private var testMode = false
     /** Pantalla apagada o bloqueada: nadie las ve, así que se esperan quietas (ahorra batería). */
     private var asleep = false
-    /** Ahorro de batería del sistema: sin deslizamiento entre pasos (mueve menos la ventana). */
+    /** Ahorro de batería (el de la app o el del sistema): sin deslizamiento entre pasos (mueve menos la ventana). */
     private var powerSave = false
+    private var saverOn = false
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
@@ -148,7 +149,7 @@ class PetService : Service() {
     }
 
     private fun readPowerSave() {
-        powerSave = (getSystemService(POWER_SERVICE) as PowerManager).isPowerSaveMode
+        powerSave = saverOn || (getSystemService(POWER_SERVICE) as PowerManager).isPowerSaveMode
     }
 
     private fun readPrefs(prefs: android.content.SharedPreferences) {
@@ -157,6 +158,8 @@ class PetService : Service() {
         showNames = prefs.getBoolean(MainActivity.PREF_NAMES, false)
         val wasOn = soundOn
         soundOn = prefs.getBoolean(MainActivity.PREF_SOUND, false)
+        saverOn = prefs.getBoolean(MainActivity.PREF_SAVER, false)
+        if (::wm.isInitialized) readPowerSave()
         if (!soundOn && ::sounds.isInitialized) sounds.stopAll()
         // El botón de la notificación dice si el sonido está encendido
         if (wasOn != soundOn && ::wm.isInitialized) startInForeground()
