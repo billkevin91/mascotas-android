@@ -22,6 +22,12 @@ Un archivo `animations.xml` (el formato de [desktopPet](https://github.com/Adria
 - **Vista previa**: el modo "Probar movimientos" ya muestra cualquier movimiento o escena en pantalla; el editor lo usará para ver los cambios al momento.
 - **Pruebas automáticas** (`app/src/test`): cada cambio en el motor se prueba en GitHub antes de compilar.
 
+## Pendientes
+
+- **Créditos de las mascotas importadas:** quitar de la pantalla "Créditos y licencias"
+  (`Credits.kt`) la sección "Mascotas importadas". Hoy copia el autor y la descripción del XML
+  de cada una, pero no se sabe de verdad de quién ni de dónde viene un archivo importado.
+
 ## A tener en cuenta al hacerlo
 
 - `PetService` guarda en memoria cada mascota cargada (`defs`, `sheets`): al guardar cambios de

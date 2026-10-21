@@ -39,6 +39,10 @@ Es un port a Kotlin del motor de [desktopPet](https://github.com/Adrianotiger/de
 
 Funciona desde Android 7.0. El plan del editor de mascotas está en [`docs/EDITOR.md`](docs/EDITOR.md). Para Android Studio: **File → Open** y elige la carpeta del repositorio.
 
+## Cambios
+
+Ver [`CHANGELOG.md`](CHANGELOG.md).
+
 ## Créditos
 
 Ver [`CREDITS.md`](CREDITS.md): motor y mascotas de [desktopPet](https://github.com/Adrianotiger/desktopPet)
