@@ -27,29 +27,10 @@ object Credits {
         • Icono de la notificación: dibujado para esta app.
     """.trimIndent()
 
-    /** Texto completo; lee los XML importados para dar el crédito que traen, así que mejor fuera del hilo principal. */
+    /** Texto completo con la licencia de desktopPet (lee un archivo: mejor fuera del hilo principal). */
     fun text(context: Context): String = buildString {
         append(BUNDLED)
-        val imported = PetLibrary.all(context).filter { !it.bundled }
-        if (imported.isNotEmpty()) {
-            append("\n\nMASCOTAS IMPORTADAS (según su animations.xml)\n")
-            for (e in imported) {
-                val h = runCatching { PetLibrary.load(context, e.id).header }.getOrNull()
-                append("• ${e.name}")
-                if (h != null) {
-                    if (h.author.isNotBlank()) append(": ${h.author}")
-                    if (h.version.isNotBlank()) append(" (versión ${h.version})")
-                    val info = clean(h.info)
-                    if (info.isNotBlank()) append(". $info")
-                }
-                append("\n")
-            }
-        }
         append("\n\nLICENCIA DE desktopPet\n")
         append(runCatching { context.assets.open("pets/LICENSE.md").bufferedReader().readText() }.getOrDefault(""))
     }
-
-    /** La descripción de desktopPet usa [br] y [link:...]. */
-    private fun clean(s: String) = s.replace("[br]", " ").replace(Regex("""\[link:([^\]]*)\]"""), "$1")
-        .replace(Regex("""\s+"""), " ").trim()
 }

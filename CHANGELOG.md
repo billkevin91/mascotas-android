@@ -1,7 +1,6 @@
 # Cambios
 
-Todos los cambios de la app, del más nuevo al más antiguo. Lo que falta por hacer está en
-[`docs/EDITOR.md`](docs/EDITOR.md) (sección "Pendientes").
+Todos los cambios de la app, del más nuevo al más antiguo.
 
 ## [Sin publicar] — versión 1.0 en desarrollo
 
