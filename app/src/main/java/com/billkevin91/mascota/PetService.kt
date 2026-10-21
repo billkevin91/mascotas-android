@@ -113,15 +113,24 @@ class PetService : Service() {
     private var saverOn = false
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            when (intent.action) {
-                Intent.ACTION_SCREEN_OFF -> asleep = true
-                // Encima de la pantalla de bloqueo no se ven: se espera a que la desbloquees
-                Intent.ACTION_SCREEN_ON -> asleep = (getSystemService(KEYGUARD_SERVICE) as KeyguardManager).isKeyguardLocked
-                Intent.ACTION_USER_PRESENT -> asleep = false
-                PowerManager.ACTION_POWER_SAVE_MODE_CHANGED -> readPowerSave()
-            }
-            syncPaused()
+            if (intent.action == PowerManager.ACTION_POWER_SAVE_MODE_CHANGED) readPowerSave() else checkAwake()
         }
+    }
+    private val awakeCheck = Runnable { checkAwake() }
+
+    /**
+     * ¿Se ven las mascotas? No con la pantalla apagada ni con la de bloqueo encima.
+     * Se mira el estado real y no el último aviso: al desbloquear con huella o cara los avisos
+     * de "pantalla encendida" y "desbloqueado" pueden llegar en cualquier orden.
+     */
+    private fun checkAwake() {
+        val interactive = (getSystemService(POWER_SERVICE) as PowerManager).isInteractive
+        val locked = (getSystemService(KEYGUARD_SERVICE) as KeyguardManager).isKeyguardLocked
+        asleep = !interactive || locked
+        handler.removeCallbacks(awakeCheck)
+        // Pantalla encendida pero bloqueada: se vuelve a mirar hasta que la desbloquees
+        if (interactive && locked) handler.postDelayed(awakeCheck, 500)
+        syncPaused()
     }
     private val prefsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { p, _ -> readPrefs(p) }
 
@@ -135,8 +144,8 @@ class PetService : Service() {
         val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
         readPrefs(prefs)
-        asleep = !(getSystemService(POWER_SERVICE) as PowerManager).isInteractive
         readPowerSave()
+        checkAwake()
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_SCREEN_ON)
