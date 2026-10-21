@@ -5,6 +5,8 @@ Todos los cambios de la app, del más nuevo al más antiguo.
 ## [Sin publicar] — versión 1.0 en desarrollo
 
 ### Añadido
+- **Corazón** ([`extras/corazon`](extras/corazon)): mascota nueva con dibujos originales, lista para
+  importar: saludo militar, baila con sus audífonos, saluda, salta y se duerme.
 - **Carro rojo** ([`extras/carro_rojo`](extras/carro_rojo)): mascota nueva con dibujos originales,
   lista para importar. Al despedirlo se va destrozando; al caer fuerte rebota.
 - **Créditos y licencias**: botón en la app y [`CREDITS.md`](CREDITS.md) con los autores del motor
