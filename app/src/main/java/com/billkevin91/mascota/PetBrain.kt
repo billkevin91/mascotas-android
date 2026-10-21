@@ -87,6 +87,7 @@ class PetBrain(
     private var tossVx = 0.0
     private var tossVy = 0.0
     private val pendingChildren = ArrayList<ChildRequest>()
+    private val startedAnimations = ArrayList<Int>()
     private var clock = 0L
     private var lastTurn = -10_000L
 
@@ -110,6 +111,14 @@ class PetBrain(
         val ms = windowsTimer(interval)
         clock += ms
         return (ms / speed).toInt().coerceAtLeast(10)
+    }
+
+    /** Movimientos que empezaron desde la última vez (para sus sonidos, como en desktopPet). */
+    fun takeStarted(): List<Int> {
+        if (startedAnimations.isEmpty()) return emptyList()
+        val list = ArrayList(startedAnimations)
+        startedAnimations.clear()
+        return list
     }
 
     fun takeChildren(): List<ChildRequest> {
@@ -339,6 +348,7 @@ class PetBrain(
         }
         if (!dragging && !tossing) offsetY = a.start.offsetY.toDouble()
 
+        startedAnimations.add(id)
         val depth = child?.depth ?: 0
         if (depth < 5) {
             def.children[id]?.forEach {

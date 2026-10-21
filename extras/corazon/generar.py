@@ -282,6 +282,13 @@ def icon(sheet):
     return out
 
 
+def ico_b64(img):
+    """Icono .ico (con mapas de bits, no PNG): es lo que entiende desktopPet de Windows."""
+    buf = io.BytesIO()
+    img.save(buf, "ICO", sizes=[(48, 48), (32, 32), (16, 16)], bitmap_format="bmp")
+    return base64.b64encode(buf.getvalue()).decode()
+
+
 def b64(img):
     buf = io.BytesIO()
     img.save(buf, "PNG", optimize=True)
@@ -405,7 +412,7 @@ if __name__ == "__main__":
     ic = icon(sheet)
     ic.save(os.path.join(HERE, "icon.png"))
     with open(os.path.join(HERE, "animations.xml"), "w", encoding="utf-8") as f:
-        f.write(xml(b64(sheet), b64(ic)))
+        f.write(xml(b64(sheet), ico_b64(ic)))
     preview(sheet).save(os.path.join(HERE, "preview.png"))
     demo(sheet, os.path.join(HERE, "demo.gif"))
     print("listo:", sheet.size)

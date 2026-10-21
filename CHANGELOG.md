@@ -5,6 +5,8 @@ Todos los cambios de la app, del más nuevo al más antiguo.
 ## [Sin publicar] — versión 1.0 en desarrollo
 
 ### Añadido
+- **Sonidos de las mascotas** (casilla en la pantalla principal, apagados de serie): suenan los que
+  traen las ovejas de colores y los zorritos, como en desktopPet.
 - **Quitar mascotas importadas**: botón con una lista para marcar las que se borran (también se van
   de la pantalla si estaban paseando). Al importar una con el mismo nombre que otra tuya, se
   reemplaza en vez de duplicarse.
@@ -33,6 +35,7 @@ Todos los cambios de la app, del más nuevo al más antiguo.
   "Otra más" y "Quitar todas".
 
 ### Corregido
+- Carro rojo y corazón: el icono del XML ahora es un `.ico` de verdad, para que desktopPet de Windows lo cargue.
 - Lanzar la mascota fallaba con el teléfono encendido varios días seguidos.
 - Importar: se rechazan archivos con `DOCTYPE`/`ENTITY` y cuadrículas de dibujos no válidas.
 - Modo prueba: repetir la despedida (`kill`) dejaba la mascota congelada y creaba otra.

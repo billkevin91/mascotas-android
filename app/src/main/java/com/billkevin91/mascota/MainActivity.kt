@@ -31,6 +31,7 @@ class MainActivity : Activity() {
         const val PREF_SPEED = "speed"
         const val PREF_NAMES = "names"
         const val PREF_TEST_SPEED = "test_speed"
+        const val PREF_SOUND = "sound"
         private const val IMPORT = 7
         private val SIZES = listOf("Pequeña" to 0.75f, "Mediana" to 1f, "Grande" to 1.5f, "Enorme" to 2f)
         private val SPEEDS = listOf("Lenta" to 0.5f, "Tranquila" to 0.75f, "Normal" to 1f, "Rápida" to 1.25f)
@@ -124,6 +125,12 @@ class MainActivity : Activity() {
 
         col.addView(title("Velocidad"))
         col.addView(speedRow(this))
+        col.addView(android.widget.CheckBox(this).apply {
+            text = "Sonidos de las mascotas (algunas traen: las ovejas de colores, los zorritos...)"
+            isChecked = prefs.getBoolean(PREF_SOUND, false)
+            setOnCheckedChangeListener { _, on -> prefs.edit().putBoolean(PREF_SOUND, on).apply() }
+            setPadding(0, dp(8), 0, dp(8))
+        })
 
         col.addView(View(this), LinearLayout.LayoutParams(1, dp(16)))
         col.addView(button("Soltar en la pantalla") { release() }.apply {

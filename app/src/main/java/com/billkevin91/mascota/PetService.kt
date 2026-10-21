@@ -97,6 +97,8 @@ class PetService : Service() {
     private var speed = 1.0
     private var testSpeed = 1.0
     private var showNames = false
+    private var soundOn = false
+    private lateinit var sounds: PetSounds
     /** Probando movimientos: sólo se ve y se mueve la mascota de prueba. */
     private var testMode = false
     private val prefsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { p, _ -> readPrefs(p) }
@@ -106,6 +108,7 @@ class PetService : Service() {
     override fun onCreate() {
         super.onCreate()
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
+        sounds = PetSounds(this)
         startInForeground()
         val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
@@ -116,6 +119,8 @@ class PetService : Service() {
         speed = prefs.getFloat(MainActivity.PREF_SPEED, 1f).toDouble()
         testSpeed = prefs.getFloat(MainActivity.PREF_TEST_SPEED, 1f).toDouble()
         showNames = prefs.getBoolean(MainActivity.PREF_NAMES, false)
+        soundOn = prefs.getBoolean(MainActivity.PREF_SOUND, false)
+        if (!soundOn && ::sounds.isInitialized) sounds.stopAll()
         for (p in pets) {
             p.brain.speed = if (p.test) testSpeed else speed
             p.refreshLabel()
@@ -145,6 +150,7 @@ class PetService : Service() {
                 for (p in ArrayList(pets)) if (p.folder == pet) p.remove()
                 defs.remove(pet)
                 sheets.remove(pet)
+                sounds.stopAll()  // y su caché de sonidos
                 if (pets.isEmpty()) stopSelf()
                 return START_STICKY
             }
@@ -207,6 +213,7 @@ class PetService : Service() {
     override fun onDestroy() {
         getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(prefsListener)
         removeAll()
+        sounds.stopAll()
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
@@ -371,6 +378,7 @@ class PetService : Service() {
                 val animBefore = brain.animationId
                 val restartsBefore = brain.restarts
                 val delay = brain.tick()
+                if (soundOn) for (id in brain.takeStarted()) sounds.started(folder, brain.def, id) else brain.takeStarted()
                 if (brain.restarts != restartsBefore) {
                     // Modo prueba: empieza de nuevo, las crías de la vuelta anterior sobran
                     pets.filter { it.parent === this@PetWindow }.forEach { it.dismiss() }
