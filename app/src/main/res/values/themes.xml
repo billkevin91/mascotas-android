@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="pasto">#3E7D2E</color>
+    <style name="Theme.Mascota" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:colorPrimary">@color/pasto</item>
+        <item name="android:colorAccent">@color/pasto</item>
+        <item name="android:statusBarColor">@color/pasto</item>
+    </style>
+</resources>
