@@ -2,6 +2,12 @@
 
 Todos los cambios de la app, del más nuevo al más antiguo.
 
+## 1.1.1 — 2026-10-21
+
+### Corregido
+- Al apagar y volver a encender la pantalla (desbloqueando con PIN, huella o cara) las mascotas no
+  volvían a aparecer. La prueba automática ahora apaga, enciende y desbloquea con PIN.
+
 ## 1.1 — 2026-10-21
 
 ### Añadido
