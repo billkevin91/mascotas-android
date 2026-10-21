@@ -236,10 +236,27 @@ class PetService : Service() {
             } else if (Build.VERSION.SDK_INT >= 28) {
                 layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
             }
-            if (brain.isChild) flags = flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
         }
         private var attached = false
         private var lastToss = 0L
+
+        // Deslizamiento entre pasos (las "Smooth movements" de desktopPet). Sin esto, con
+        // la mascota ampliada la ventana salta varios píxeles de golpe en cada paso.
+        private var fromX = 0f
+        private var fromY = 0f
+        private var toX = 0f
+        private var toY = 0f
+        private var glideStart = 0L
+        private var glideMs = 0L
+        private val glide = object : Runnable {
+            override fun run() {
+                if (!attached) return
+                val t = if (glideMs <= 0) 1f
+                else ((SystemClock.uptimeMillis() - glideStart).toFloat() / glideMs).coerceIn(0f, 1f)
+                place(fromX + (toX - fromX) * t, fromY + (toY - fromY) * t)
+                if (t < 1f) view.postOnAnimation(this)
+            }
+        }
 
         private val tick = object : Runnable {
             override fun run() {
@@ -253,7 +270,7 @@ class PetService : Service() {
                     PetWindow(cb, sheet, scale).show()
                 }
                 if (brain.finished) { remove(); return }
-                update()
+                update(glideFor = delay.toLong())
                 handler.postDelayed(this, delay.toLong())
             }
         }
@@ -285,6 +302,7 @@ class PetService : Service() {
             attached = false
             handler.removeCallbacks(tick)
             handler.removeCallbacks(toss)
+            view.removeCallbacks(glide)
             runCatching { wm.removeView(view) }
             pets.remove(this)
             if (pets.none { !it.brain.isChild }) {
@@ -293,15 +311,41 @@ class PetService : Service() {
             }
         }
 
-        private fun update(addNow: Boolean = false) {
-            params.x = (brain.x * scale).roundToInt()
-            params.y = ((brain.y + brain.offsetY) * scale).roundToInt()
+        /** Dibuja el paso actual; con [glideFor] la ventana se desliza hasta su sitio en ese tiempo. */
+        private fun update(addNow: Boolean = false, glideFor: Long = 0) {
+            val x = (brain.x * scale).toFloat()
+            val y = ((brain.y + brain.offsetY) * scale).toFloat()
             view.invalidate()
             if (addNow) {
+                toX = x; toY = y
+                params.x = x.roundToInt()
+                params.y = y.roundToInt()
                 attached = runCatching { wm.addView(view, params) }.isSuccess
-            } else if (attached) {
-                runCatching { wm.updateViewLayout(view, params) }
+                return
             }
+            if (!attached) return
+            view.removeCallbacks(glide)
+            // Al arrastrar, al volar o si reaparece en otro lado, va directo
+            val far = Math.hypot((x - toX).toDouble(), (y - toY).toDouble()) > maxOf(params.width, params.height) * 1.5
+            if (glideFor > 0 && !brain.dragging && !brain.tossing && !far) {
+                fromX = params.x.toFloat(); fromY = params.y.toFloat()
+                toX = x; toY = y
+                glideStart = SystemClock.uptimeMillis()
+                glideMs = glideFor
+                glide.run()
+            } else {
+                toX = x; toY = y
+                place(x, y)
+            }
+        }
+
+        private fun place(x: Float, y: Float) {
+            val nx = x.roundToInt()
+            val ny = y.roundToInt()
+            if (nx == params.x && ny == params.y) return
+            params.x = nx
+            params.y = ny
+            runCatching { wm.updateViewLayout(view, params) }
         }
 
         private inner class SpriteView : View(this@PetService) {
@@ -337,7 +381,20 @@ class PetService : Service() {
 
             @SuppressLint("ClickableViewAccessibility")
             override fun onTouchEvent(e: MotionEvent): Boolean {
-                if (brain.isChild || brain.isDying) return false
+                if (brain.isDying) return false
+                if (brain.isChild) {
+                    // Las crías (oveja negra, flores...) no se arrastran: doble toque y se van
+                    if (e.actionMasked == MotionEvent.ACTION_DOWN) {
+                        val now = SystemClock.uptimeMillis()
+                        if (now - lastUp < ViewConfiguration.getDoubleTapTimeout()) {
+                            brain.kill()
+                            handler.removeCallbacks(tick)
+                            handler.post(tick)
+                        }
+                        lastUp = now
+                    }
+                    return true
+                }
                 when (e.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
                         val now = SystemClock.uptimeMillis()

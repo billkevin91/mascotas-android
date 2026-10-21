@@ -7241,7 +7241,7 @@
         <action>none</action>
       </sequence>
       <border>
-        <next probability="100" only="taskbar">223</next>
+        <next probability="100" only="taskbar">217</next>
         <next probability="100" only="window">216</next>
         <next probability="25" only="horizontal">207</next>
         <next probability="75" only="horizontal">64</next>
