@@ -69,3 +69,46 @@ class LoopTest {
         }
     }
 }
+
+class GoodbyeLoopTest {
+    /** Repetir "kill" y luego elegir otro movimiento: la misma mascota lo hace (no se queda despidiéndose). */
+    @Test fun despuesDeRepetirLaDespedidaHaceOtro() {
+        for (name in Pets.all) {
+            val def = Pets.def(name)
+            if (def.kill <= 0) continue
+            // Un movimiento opaco según el XML (la aparición del zorrito es un fundido de entrada)
+            val walk = def.animations.values.first { it.id != def.kill && it.start.opacity == 1.0 && it.end.opacity == 1.0 && it.frames.isNotEmpty() }.id
+            val w = World(seed = 4)
+            val pet = w.add(def)
+            pet.play(def.kill, loop = true)
+            w.run(5_000)
+            assertTrue("$name: desapareció repitiendo la despedida", !pet.finished)
+            pet.play(walk, loop = true)
+            w.run(8_000)
+            assertTrue("$name: sigue despidiéndose", !pet.isDying && !pet.finished)
+            assertTrue("$name: se quedó transparente (${pet.opacity})", pet.opacity > 0.5)
+            // Que se mueva sola mientras se despide: vuelve normal
+            pet.play(def.kill, loop = true)
+            w.run(10_000)
+            pet.stopLoop()
+            w.run(12_000)
+            assertTrue("$name: desapareció al dejarla sola", !pet.finished && !pet.isDying)
+        }
+    }
+
+    /** La despedida se desvanece sin volver a verse de golpe. */
+    @Test fun laDespedidaNoParpadea() {
+        for (name in Pets.all) {
+            val def = Pets.def(name)
+            if (def.kill <= 0) continue
+            val w = World(seed = 5)
+            val pet = w.add(def)
+            pet.kill()
+            var last = 1.0
+            var jumps = 0
+            w.run(20_000) { b -> if (b === pet && !pet.finished) { if (pet.opacity > last + 0.3) jumps++; last = pet.opacity } }
+            assertTrue("$name: la opacidad volvió a subir $jumps veces", jumps == 0)
+            assertTrue("$name: no terminó", pet.finished)
+        }
+    }
+}

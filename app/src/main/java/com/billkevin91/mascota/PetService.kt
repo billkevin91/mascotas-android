@@ -117,7 +117,10 @@ class PetService : Service() {
                     }
                 } else {
                     // La última mascota de ese tipo; si no hay, aparece una
-                    val target = pets.lastOrNull { !it.brain.isChild && !it.brain.isDying && it.folder == pet }
+                    // (una que repite la despedida en el modo prueba también sirve)
+                    val target = pets.lastOrNull {
+                        !it.brain.isChild && (!it.brain.isDying || it.brain.loopId > 0) && it.folder == pet
+                    }
                         ?: addPet(pet, getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE).getFloat(MainActivity.PREF_SIZE, 1f))
                     target?.play(id, loop)
                 }
@@ -496,7 +499,7 @@ class PetService : Service() {
 
             @SuppressLint("ClickableViewAccessibility")
             override fun onTouchEvent(e: MotionEvent): Boolean {
-                if (brain.isDying) return false
+                if (brain.isDying && brain.loopId <= 0) return false
                 if (brain.isChild) {
                     // Las crías (oveja negra, flores...) no se arrastran: doble toque y se van
                     if (e.actionMasked == MotionEvent.ACTION_DOWN) {

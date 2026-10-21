@@ -144,6 +144,11 @@ class TestActivity : Activity() {
                 val x = a.start.x.constant
                 if (x != null && x != 0.0) parts.add("avanza ${abs(x).toInt()} px")
                 val names = def.animations
+                // Avisos para que no parezca que algo está congelado
+                val still = a.frames.distinct().size <= 1 && a.start.x.constant == 0.0 && a.start.y.constant == 0.0 &&
+                    a.end.x.constant == 0.0 && a.end.y.constant == 0.0
+                if (a.id == def.kill) parts.add(0, "despedida: se desvanece")
+                else if (still) parts.add(0, "pose quieta")
                 val start = def.sceneStart(a.id)
                 val scene = def.scene(start)
                 when {

@@ -119,6 +119,8 @@ class PetBrain(
     // ---- Tocar, arrastrar y lanzar ----
 
     fun grab() {
+        // Repitiendo la despedida en el modo prueba: al tocarla vuelve a ser normal
+        if (isDying && loopId > 0) { revive(); stopLoop() }
         if (isDying || isChild) return
         dragging = true
         tossing = false
@@ -168,7 +170,12 @@ class PetBrain(
 
     /** Modo prueba: hace ya este movimiento. */
     fun play(id: Int, loop: Boolean) {
-        if (isDying || isChild || def.animations[id] == null) return
+        if (isChild || def.animations[id] == null) return
+        if (isDying) {
+            // Sólo se interrumpe una despedida del modo prueba (repitiendo "kill")
+            if (loopId <= 0) return
+            revive()
+        }
         dragging = false
         tossing = false
         // Muchos movimientos son trozos de una escena (el baño): se prueba la escena entera
@@ -236,8 +243,18 @@ class PetBrain(
 
     /** Modo prueba: deja de repetir. */
     fun stopLoop() {
+        val testGoodbye = isDying && loopId > 0
         loopId = -1
         scene = emptySet()
+        // Estaba repitiendo la despedida: que no desaparezca, vuelve a aparecer normal
+        if (testGoodbye) { revive(); spawn() }
+    }
+
+    /** Deja de despedirse (sólo para el modo prueba). */
+    private fun revive() {
+        current = null
+        killFade = 1.0
+        opacity = 1.0
     }
 
     private fun isOutside(partly: Boolean): Boolean = if (partly) {
@@ -254,6 +271,8 @@ class PetBrain(
 
     /** Despedirse: animación "kill" si existe, si no desaparece. */
     fun kill() {
+        // Doble toque mientras repite la despedida en el modo prueba: se va de verdad
+        if (isDying && loopId > 0) { finished = true; return }
         if (def.kill > 0 && !isChild) {
             dragging = false
             tossing = false
@@ -440,7 +459,8 @@ class PetBrain(
             }
             if (a.id == def.kill) {
                 killFade -= 0.1
-                opacity = killFade
+                // Se sigue desvaneciendo desde donde la dejó el XML (sin volver a verse de golpe)
+                opacity = minOf(opacity, killFade)
                 if (killFade <= 0.1) {
                     if (loopId > 0) {
                         // Modo prueba repitiendo: la despedida se ve, pero la mascota vuelve
