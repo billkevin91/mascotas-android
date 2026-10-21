@@ -10,6 +10,9 @@ Es un port a Kotlin del motor de [desktopPet](https://github.com/Adrianotiger/de
 - Si pones varias, reaccionan al chocar entre sí: las eSheep se dan la vuelta, rebotan
   o se echan a dormir junto a la que ya duerme; las demás se dan la vuelta o siguen de largo.
 - Desde la notificación: **Otra más** o **Quitar todas**.
+- **Velocidad**: Lenta, Tranquila, Normal o Rápida, para todas a la vez.
+- **Probar movimientos**: elige cualquiera de los movimientos del XML (con buscador) y la
+  mascota lo hace al momento; puede repetirlo y mostrar su nombre encima.
 
 | Archivo | Contenido |
 | --- | --- |
@@ -17,6 +20,7 @@ Es un port a Kotlin del motor de [desktopPet](https://github.com/Adrianotiger/de
 | `PetBrain.kt` | Movimiento, bordes, gravedad, lanzamiento e hijas (port de `FormPet.cs`) |
 | `PetService.kt` | Servicio que dibuja cada mascota en una ventanita flotante |
 | `MainActivity.kt` | Elegir mascota y tamaño, pedir el permiso y soltarla |
+| `TestActivity.kt` | Modo prueba: lista de movimientos para verlos uno a uno |
 | `app/src/main/assets/pets/` | Mascotas de desktopPet (sprites + animaciones; ver su README) |
 
 ## Instalarla

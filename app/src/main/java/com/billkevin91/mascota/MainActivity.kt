@@ -27,14 +27,42 @@ class MainActivity : Activity() {
         const val PREFS = "mascotas"
         const val PREF_PET = "pet"
         const val PREF_SIZE = "size"
+        const val PREF_SPEED = "speed"
+        const val PREF_NAMES = "names"
 
         /** Carpetas en assets/pets (mascotas de desktopPet). */
         val PETS = listOf("esheep64", "blue_sheep", "pink_sheep", "neko", "pink_neko", "fox", "pink_fox")
-        private val NAMES = mapOf(
+        val NAMES = mapOf(
             "esheep64" to "eSheep", "blue_sheep" to "Oveja azul", "pink_sheep" to "Oveja rosa",
             "neko" to "Neko", "pink_neko" to "Neko rosa", "fox" to "Zorrito", "pink_fox" to "Zorrito rosa",
         )
         private val SIZES = listOf("Pequeña" to 0.75f, "Mediana" to 1f, "Grande" to 1.5f, "Enorme" to 2f)
+        private val SPEEDS = listOf("Lenta" to 0.5f, "Tranquila" to 0.75f, "Normal" to 1f, "Rápida" to 1.25f)
+
+        /** Botones de velocidad (se guardan y el servicio la aplica al momento). */
+        fun speedRow(a: Activity): LinearLayout {
+            val prefs = a.getSharedPreferences(PREFS, MODE_PRIVATE)
+            val row = LinearLayout(a).apply { orientation = LinearLayout.HORIZONTAL }
+            val buttons = ArrayList<Pair<Float, Button>>()
+            fun paint() {
+                val current = prefs.getFloat(PREF_SPEED, 1f)
+                for ((f, b) in buttons) {
+                    b.setTypeface(null, if (f == current) Typeface.BOLD else Typeface.NORMAL)
+                    b.alpha = if (f == current) 1f else 0.55f
+                }
+            }
+            SPEEDS.forEach { (name, f) ->
+                val b = Button(a).apply {
+                    text = name
+                    isAllCaps = false
+                    setOnClickListener { prefs.edit().putFloat(PREF_SPEED, f).apply(); paint() }
+                }
+                buttons.add(f to b)
+                row.addView(b, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            }
+            paint()
+            return row
+        }
     }
 
     private val green = Color.rgb(62, 125, 46)
@@ -94,6 +122,9 @@ class MainActivity : Activity() {
         }
         col.addView(sizes)
 
+        col.addView(title("Velocidad"))
+        col.addView(speedRow(this))
+
         col.addView(View(this), LinearLayout.LayoutParams(1, dp(16)))
         col.addView(button("Soltar en la pantalla") { release() }.apply {
             textSize = 18f
@@ -102,6 +133,7 @@ class MainActivity : Activity() {
         }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(56)))
         col.addView(View(this), LinearLayout.LayoutParams(1, dp(8)))
         col.addView(button("Quitar todas") { PetService.clear(this) })
+        col.addView(button("Probar movimientos") { startActivity(Intent(this, TestActivity::class.java)) })
 
         col.addView(text("Mascotas del proyecto desktopPet de Adriano Petrucci y su comunidad " +
             "(github.com/Adrianotiger/desktopPet, licencia MIT).").apply { textSize = 12f; alpha = 0.6f; setPadding(0, dp(24), 0, 0) })
@@ -113,6 +145,12 @@ class MainActivity : Activity() {
         val test = intent.getStringExtra("soltar")
         if (test != null && Settings.canDrawOverlays(this)) {
             test.split(',').filter { it in PETS }.forEach { PetService.add(this, it, size) }
+            // ... --es mover esheep64:7 --ez nombres true (modo prueba)
+            if (intent.hasExtra("nombres")) prefs.edit().putBoolean(PREF_NAMES, intent.getBooleanExtra("nombres", false)).apply()
+            intent.getStringExtra("mover")?.split(',')?.forEach { m ->
+                val (p, id) = m.split(':').let { it[0] to (it.getOrNull(1)?.toIntOrNull() ?: -1) }
+                if (p in PETS) PetService.play(this, p, id, true)
+            }
             return
         }
         if (Build.VERSION.SDK_INT >= 33) requestPermissions(arrayOf("android.permission.POST_NOTIFICATIONS"), 1)

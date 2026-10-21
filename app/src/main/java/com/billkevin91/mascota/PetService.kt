@@ -40,14 +40,24 @@ class PetService : Service() {
     companion object {
         const val ACTION_ADD = "com.billkevin91.mascota.ADD"
         const val ACTION_CLEAR = "com.billkevin91.mascota.CLEAR"
+        const val ACTION_PLAY = "com.billkevin91.mascota.PLAY"
         const val EXTRA_PET = "pet"
         const val EXTRA_SIZE = "size"
+        const val EXTRA_ANIMATION = "animation"
+        const val EXTRA_LOOP = "loop"
         private const val CHANNEL = "mascotas"
         private const val MAX_PETS = 12
 
         fun add(context: Context, pet: String, size: Float) {
             val i = Intent(context, PetService::class.java).setAction(ACTION_ADD)
                 .putExtra(EXTRA_PET, pet).putExtra(EXTRA_SIZE, size)
+            if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(i) else context.startService(i)
+        }
+
+        /** Modo prueba: la mascota de ese tipo hace el movimiento [id] (-1 = que vuelva a moverse sola). */
+        fun play(context: Context, pet: String, id: Int, loop: Boolean) {
+            val i = Intent(context, PetService::class.java).setAction(ACTION_PLAY)
+                .putExtra(EXTRA_PET, pet).putExtra(EXTRA_ANIMATION, id).putExtra(EXTRA_LOOP, loop)
             if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(i) else context.startService(i)
         }
 
@@ -62,6 +72,9 @@ class PetService : Service() {
     private val defs = HashMap<String, PetDef>()
     private val sheets = HashMap<String, Bitmap>()
     private val areas = HashMap<Int, Area>()
+    private var speed = 1.0
+    private var showNames = false
+    private val prefsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { p, _ -> readPrefs(p) }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -69,6 +82,18 @@ class PetService : Service() {
         super.onCreate()
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
         startInForeground()
+        val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
+        prefs.registerOnSharedPreferenceChangeListener(prefsListener)
+        readPrefs(prefs)
+    }
+
+    private fun readPrefs(prefs: android.content.SharedPreferences) {
+        speed = prefs.getFloat(MainActivity.PREF_SPEED, 1f).toDouble()
+        showNames = prefs.getBoolean(MainActivity.PREF_NAMES, false)
+        for (p in pets) {
+            p.brain.speed = speed
+            p.refreshLabel()
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -78,6 +103,24 @@ class PetService : Service() {
                 removeAll()
                 stopSelf()
                 return START_NOT_STICKY
+            }
+            ACTION_PLAY -> {
+                if (!Settings.canDrawOverlays(this)) {
+                    if (pets.isEmpty()) stopSelf()
+                    return START_NOT_STICKY
+                }
+                val pet = intent.getStringExtra(EXTRA_PET) ?: MainActivity.PETS.first()
+                val id = intent.getIntExtra(EXTRA_ANIMATION, -1)
+                val loop = intent.getBooleanExtra(EXTRA_LOOP, false)
+                if (id < 0) {
+                    for (p in pets) p.brain.loopId = -1
+                } else {
+                    // La última mascota de ese tipo; si no hay, aparece una
+                    val target = pets.lastOrNull { !it.brain.isChild && !it.brain.isDying && it.folder == pet }
+                        ?: addPet(pet, getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE).getFloat(MainActivity.PREF_SIZE, 1f))
+                    target?.play(id, loop)
+                }
+                return START_STICKY
             }
             else -> {
                 // Sin intent = Android reinició el servicio: vuelve la última mascota elegida
@@ -102,6 +145,7 @@ class PetService : Service() {
     }
 
     override fun onDestroy() {
+        getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(prefsListener)
         removeAll()
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
@@ -136,8 +180,8 @@ class PetService : Service() {
 
     // ---- Mascotas ----
 
-    private fun addPet(folder: String, size: Float) {
-        if (pets.count { !it.brain.isChild } >= MAX_PETS) return
+    private fun addPet(folder: String, size: Float): PetWindow? {
+        if (pets.count { !it.brain.isChild } >= MAX_PETS) return null
         val def = defs.getOrPut(folder) { assets.open("pets/$folder/animations.xml").use { PetDef.parse(it) } }
         val sheet = sheets.getOrPut(folder) { loadSheet(def) }
         val density = resources.displayMetrics.density
@@ -146,8 +190,9 @@ class PetService : Service() {
         val brain = PetBrain(def, area, sheet.width / def.tilesX, sheet.height / def.tilesY)
         brain.scale = scale
         brain.others = ::allBrains
+        brain.speed = speed
         brain.start()
-        PetWindow(brain, sheet, scale).show()
+        return PetWindow(brain, sheet, scale, folder).takeIf { it.show() }
     }
 
     private fun allBrains(): List<PetBrain> = pets.map { it.brain }
@@ -216,7 +261,7 @@ class PetService : Service() {
     }
 
     /** Una mascota (o hija) en su propia ventanita flotante. */
-    private inner class PetWindow(val brain: PetBrain, val sheet: Bitmap, val scale: Int) {
+    private inner class PetWindow(val brain: PetBrain, val sheet: Bitmap, val scale: Int, val folder: String) {
         private val view = SpriteView()
         private val params = WindowManager.LayoutParams(
             brain.frameW * scale,
@@ -266,11 +311,13 @@ class PetService : Service() {
                     val cb = PetBrain(brain.def, brain.area, brain.frameW, brain.frameH, c)
                     cb.scale = scale
                     cb.others = ::allBrains
+                    cb.speed = speed
                     cb.start()
-                    PetWindow(cb, sheet, scale).show()
+                    PetWindow(cb, sheet, scale, folder).show()
                 }
                 if (brain.finished) { remove(); return }
                 update(glideFor = delay.toLong())
+                refreshLabel()
                 handler.postDelayed(this, delay.toLong())
             }
         }
@@ -286,15 +333,79 @@ class PetService : Service() {
             }
         }
 
-        fun show() {
+        fun show(): Boolean {
             update(addNow = true)
             if (!attached) {
                 // Sin permiso para dibujar encima: no hay nada que mostrar
                 if (pets.isEmpty()) stopSelf()
-                return
+                return false
             }
             pets.add(this)
+            refreshLabel()
             handler.post(tick)
+            return true
+        }
+
+        fun play(id: Int, loop: Boolean) {
+            brain.loopId = if (loop) id else -1
+            handler.removeCallbacks(toss)
+            brain.play(id)
+            handler.removeCallbacks(tick)
+            handler.post(tick)
+        }
+
+        // ---- Letrero con el nombre del movimiento (modo prueba) ----
+
+        private var label: android.widget.TextView? = null
+        private val labelParams = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            params.type,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            if (Build.VERSION.SDK_INT >= 30) setFitInsetsTypes(0)
+        }
+
+        fun refreshLabel() {
+            val want = showNames && attached && !brain.isChild
+            var l = label
+            if (!want) {
+                if (l != null) { runCatching { wm.removeView(l) }; label = null }
+                return
+            }
+            val text = "${brain.animationId} · ${brain.animationName}" + if (brain.loopId > 0) " ⟳" else ""
+            if (l == null) {
+                val d = resources.displayMetrics.density
+                l = android.widget.TextView(this@PetService).apply {
+                    textSize = 12f
+                    setTextColor(Color.WHITE)
+                    setPadding((6 * d).toInt(), (2 * d).toInt(), (6 * d).toInt(), (2 * d).toInt())
+                    background = android.graphics.drawable.GradientDrawable().apply {
+                        setColor(Color.argb(190, 0, 0, 0)); cornerRadius = 8 * d
+                    }
+                }
+                l.text = text
+                placeLabel(l)
+                if (runCatching { wm.addView(l, labelParams) }.isFailure) return
+                label = l
+            } else {
+                if (l.text != text) l.text = text
+                placeLabel(l)
+                runCatching { wm.updateViewLayout(l, labelParams) }
+            }
+        }
+
+        private fun placeLabel(l: android.widget.TextView) {
+            val w = if (l.width > 0) l.width else l.paint.measureText(l.text.toString()).toInt()
+            val h = if (l.height > 0) l.height else (l.textSize * 1.6f).toInt()
+            labelParams.x = params.x + params.width / 2 - w / 2
+            // Encima de la mascota, o debajo si está arriba del todo
+            labelParams.y = if (params.y - h > 0) params.y - h else params.y + params.height
         }
 
         fun remove() {
@@ -304,6 +415,8 @@ class PetService : Service() {
             handler.removeCallbacks(toss)
             view.removeCallbacks(glide)
             runCatching { wm.removeView(view) }
+            label?.let { runCatching { wm.removeView(it) } }
+            label = null
             pets.remove(this)
             if (pets.none { !it.brain.isChild }) {
                 for (p in ArrayList(pets)) p.remove()
@@ -346,6 +459,7 @@ class PetService : Service() {
             params.x = nx
             params.y = ny
             runCatching { wm.updateViewLayout(view, params) }
+            if (label != null) refreshLabel()
         }
 
         private inner class SpriteView : View(this@PetService) {

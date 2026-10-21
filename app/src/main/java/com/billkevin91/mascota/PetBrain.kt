@@ -56,6 +56,12 @@ class PetBrain(
     val isDying get() = current?.id == def.kill
     /** Nombre del movimiento actual en el XML (walk, sleep1a, batha...). */
     val animationName get() = current?.name.orEmpty()
+    val animationId get() = current?.id ?: -1
+
+    /** Modo prueba: al terminar cualquier movimiento vuelve a este (-1 = libre). */
+    var loopId = -1
+    /** Velocidad general: 0.5 = la mitad de rápido. */
+    var speed = 1.0
 
     private var current: Animation? = null
     private var step = 0
@@ -89,7 +95,7 @@ class PetBrain(
         step++
         val ms = windowsTimer(interval)
         clock += ms
-        return ms
+        return (ms / speed).toInt().coerceAtLeast(10)
     }
 
     fun takeChildren(): List<ChildRequest> {
@@ -147,6 +153,36 @@ class PetBrain(
             tossing = false
             setAnimation(if (tossVy < 40) def.fallSoft else def.fallHard)
         }
+    }
+
+    /** Modo prueba: hace ya este movimiento. */
+    fun play(id: Int) {
+        if (isDying || isChild || def.animations[id] == null) return
+        dragging = false
+        tossing = false
+        // Que se vea: si estaba entrando o fuera de la pantalla, al centro del suelo
+        if (isOutside(partly = true)) toCenter()
+        startLoop(id)
+    }
+
+    /** Empieza un movimiento de prueba; si es para caer y está en el suelo, desde arriba. */
+    private fun startLoop(id: Int) {
+        val a = def.animations[id] ?: return
+        val falls = (a.start.y.constant ?: 0.0) > 0 || (a.end.y.constant ?: 0.0) > 0
+        if (falls && y >= area.bottom - frameH - 2) y = area.top + (area.bottom - area.top) / 4.0
+        setAnimation(id)
+    }
+
+    private fun isOutside(partly: Boolean): Boolean = if (partly) {
+        x < area.left || x + frameW > area.right || y < area.top || y + frameH > area.bottom
+    } else {
+        x < -frameW || x > area.screenW || y < -frameH || y > area.screenH
+    }
+
+    private fun toCenter() {
+        x = (area.left + area.right - frameW) / 2.0
+        y = (area.bottom - frameH).toDouble()
+        offsetY = 0.0
     }
 
     /** Despedirse: animación "kill" si existe, si no desaparece. */
@@ -263,6 +299,13 @@ class PetBrain(
 
         if (dragging || tossing) return
 
+        if (loopId > 0 && isOutside(partly = false) && def.animations[loopId] != null) {
+            // Repitiendo un movimiento que la sacó de la pantalla: vuelve a empezar en el centro
+            toCenter()
+            startLoop(loopId)
+            return
+        }
+
         var dx = startX.toDouble()
         var dy = startY.toDouble()
         if (total > 1) {
@@ -317,15 +360,21 @@ class PetBrain(
 
         if (!newAnimation && step >= total) {
             if (a.action == "flip") movingLeft = !movingLeft
+            val outside = isOutside(partly = false)
             val nextAnimation = when {
-                x < -frameW || x > area.screenW -> -1
-                y < -frameH || y > area.screenH -> -1
+                loopId > 0 && def.animations[loopId] != null && a.id != def.kill -> loopId
+                outside -> -1
                 else -> pickNext(a.onEnd, if (y + frameH + dy >= area.bottom - 2) Only.TASKBAR else Only.NONE)
             }
             if (a.id == def.kill) {
                 killFade -= 0.1
                 opacity = killFade
                 if (killFade <= 0.1) finished = true
+                return
+            } else if (nextAnimation >= 0 && nextAnimation == loopId) {
+                x += dx
+                y += dy
+                startLoop(loopId)
                 return
             } else if (nextAnimation >= 0) {
                 next = nextAnimation

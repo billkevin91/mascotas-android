@@ -23,6 +23,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".TestActivity"
+            android:exported="false"
+            android:label="Probar movimientos" />
+
         <service
             android:name=".PetService"
             android:exported="false"
