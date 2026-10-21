@@ -195,13 +195,34 @@ class PetBrain(
             val sx = value(s.x)
             x = (if (movingLeft) sx else area.screenW - sx - frameW).toDouble()
         } else {
-            // Si estaba entrando o fuera de la pantalla, al centro del suelo;
-            // si es para caer y está en el suelo, desde arriba
-            if (isOutside(partly = true)) toCenter()
-            val falls = (a.start.y.constant ?: 0.0) > 0 || (a.end.y.constant ?: 0.0) > 0
-            if (falls && y >= area.bottom - frameH - 2) y = area.top + (area.bottom - area.top) / 4.0
+            placeFor(a)
         }
         setAnimation(id)
+    }
+
+    /**
+     * Dónde empezar un movimiento de prueba para que tenga sentido: los de suelo en el suelo,
+     * los de techo arriba, los de pared junto a la pared y los de caer desde arriba.
+     */
+    private fun placeFor(a: Animation) {
+        if (isOutside(partly = true)) toCenter()
+        val sx = a.start.x.constant ?: 0.0
+        val ex = a.end.x.constant ?: 0.0
+        val sy = a.start.y.constant ?: 0.0
+        val ey = a.end.y.constant ?: 0.0
+        val name = a.name.lowercase()
+        val floor = (area.bottom - frameH).toDouble()
+        val wall = sx == 0.0 && ex == 0.0 && (sy != 0.0 || ey != 0.0) && "fall" !in name && "jump" !in name
+        when {
+            "top" in name -> y = area.top.toDouble()
+            wall -> {
+                // Pegada a la pared hacia la que mira; si sube, desde abajo
+                x = if (movingLeft) area.left.toDouble() else (area.right - frameW).toDouble()
+                y = if (sy < 0 || ey < 0) floor else area.top + (area.bottom - area.top) / 4.0
+            }
+            sy > 0 || ey > 0 -> if (y >= floor - 2) y = area.top + (area.bottom - area.top) / 4.0
+            else -> y = floor
+        }
     }
 
     /** Modo prueba: deja de repetir. */
@@ -254,12 +275,14 @@ class PetBrain(
 
     private fun randomSpawn(): Spawn? {
         if (def.spawns.isEmpty()) return null
-        val total = def.spawns.sumOf { it.probability }
-        val r = if (total > 0) rnd.nextInt(total) else 0
+        val total = def.spawns.sumOf { it.probability.coerceAtLeast(0) }
+        if (total <= 0) return def.spawns.first()
+        // Según su probabilidad (desktopPet usa >= y la primera sale de más, aunque valga 0)
+        val r = rnd.nextInt(total)
         var sum = 0
         for (s in def.spawns) {
-            sum += s.probability
-            if (sum >= r) return s
+            sum += s.probability.coerceAtLeast(0)
+            if (sum > r) return s
         }
         return def.spawns.first()
     }
@@ -330,9 +353,11 @@ class PetBrain(
             else frames[((s - n + a.repeatFrom) % (n - a.repeatFrom) + a.repeatFrom).coerceIn(0, n - 1)]
         }
 
-        if (!tossing) interval = startInterval + (endInterval - startInterval) * step / total
-        opacity = a.start.opacity + (a.end.opacity - a.start.opacity) * step / total
-        offsetY = (a.start.offsetY + (a.end.offsetY - a.start.offsetY) * step / total).toDouble()
+        // Del principio al final del movimiento; pasado el final (arrastrando, despidiéndose) se queda en el final
+        val k = step.coerceIn(0, total)
+        if (!tossing) interval = startInterval + (endInterval - startInterval) * k / total
+        opacity = a.start.opacity + (a.end.opacity - a.start.opacity) * k / total
+        offsetY = (a.start.offsetY + (a.end.offsetY - a.start.offsetY) * k / total).toDouble()
 
         if (dragging || tossing) return
 
@@ -407,7 +432,17 @@ class PetBrain(
             if (a.id == def.kill) {
                 killFade -= 0.1
                 opacity = killFade
-                if (killFade <= 0.1) finished = true
+                if (killFade <= 0.1) {
+                    if (loopId > 0) {
+                        // Modo prueba repitiendo: la despedida se ve, pero la mascota vuelve
+                        killFade = 1.0
+                        opacity = 1.0
+                        current = null
+                        startScene(loopId)
+                    } else {
+                        finished = true
+                    }
+                }
                 return
             } else if (loopId > 0 && nextAnimation !in scene) {
                 // Terminó la escena que se está probando: otra vez desde el principio

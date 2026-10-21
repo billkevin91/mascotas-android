@@ -17,11 +17,19 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Compilar APK
-        working-directory: .
+      - name: Probar los movimientos
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew testDebugUnitTest --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: resultado-pruebas
+          path: app/build/reports/tests/
+
+      - name: Compilar APK
+        run: ./gradlew assembleDebug --no-daemon
 
       - uses: actions/upload-artifact@v4
         with:

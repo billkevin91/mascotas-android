@@ -28,3 +28,8 @@ android {
         jvmTarget = "17"
     }
 }
+
+dependencies {
+    // Pruebas del motor de movimientos (app/src/test), sin Android
+    testImplementation("junit:junit:4.13.2")
+}
