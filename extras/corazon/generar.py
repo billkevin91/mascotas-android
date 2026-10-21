@@ -7,7 +7,7 @@ import base64, io, os
 from PIL import Image, ImageDraw
 
 W, H = 48, 56
-COLS, ROWS = 8, 3
+COLS, ROWS = 8, 4
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 OUT = (90, 10, 20, 255)
@@ -252,6 +252,10 @@ def frames():
     f.append(sparkle_heart(scaled(char(eyes="happy"), 0.25)))        # 21 corazoncito y brillos
     f.append(stars(char(dy=4, eyes="dizzy", mouth="o")))             # 22 golpe fuerte: mareado
     f.append(char(arms="phones", eyes="closed", mouth="smile"))      # 23 escuchar música
+    # 24-26 dar la vuelta como una moneda: se estrecha hasta quedar de canto
+    f.append(squash_x(char(), 0.7))
+    f.append(squash_x(char(), 0.4))
+    f.append(squash_x(char(), 0.15))
     return f
 
 
@@ -310,8 +314,8 @@ def xml(sheet_png, icon_png):
         anim(1, "walk", [1, 0, 2, 0], sx=-2, si=150, repeat="4+random/15",
              nexts=[(1, 35, N), (7, 15, N), (8, 8, N), (9, 8, N), (10, 10, N), (11, 8, N), (12, 4, N), (16, 8, N)],
              border=[(2, 100, N)], gravity=G),
-        anim(2, "rotate_a", [0, 3], si=120, nexts=[(3, 100, N)], action="flip"),
-        anim(3, "rotate_b", [3, 0], si=120, nexts=[(1, 100, N)]),
+        anim(2, "rotate_a", [0, 24, 25, 26], si=90, nexts=[(3, 100, N)], action="flip"),
+        anim(3, "rotate_b", [26, 25, 24, 0], si=90, nexts=[(1, 100, N)]),
         anim(4, "drag", [5, 6], si=180, nexts=[(1, 100, N)]),
         anim(5, "fall", [7], sy=2, ey=10, si=60, ei=40, repeat="25", nexts=[(5, 100, N)], border=[(6, 100, N)]),
         anim(6, "fall soft", [8, 8, 0], si=120, nexts=[(7, 50, N), (1, 50, N)]),
@@ -381,8 +385,8 @@ def demo(sheet, path):
     for i in (10, 11, 10, 11, 10, 11, 0): add(i, 180)
     for i in (23, 12, 13, 12, 13, 12, 13, 23): add(i, 260)
     for i in (14, 15, 16, 0, 14, 15, 16, 0): add(i, 130)
-    for i in (0, 3): add(i, 120)
-    for i in (3, 0): add(i, 120, flip=True)
+    for i in (0, 24, 25, 26): add(i, 90)
+    for i in (26, 25, 24, 0): add(i, 90, flip=True)
     for k in range(12): add((1, 0, 2, 0)[k % 4], 150, 2, flip=True)
     for i in (4, 17, 18, 17, 18): add(i, 400)
     for i in (22, 22, 22, 22, 8, 0): add(i, 180)
