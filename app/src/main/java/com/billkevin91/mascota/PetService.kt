@@ -261,7 +261,14 @@ class PetService : Service() {
     }
 
     /** Una mascota (o hija) en su propia ventanita flotante. */
-    private inner class PetWindow(val brain: PetBrain, val sheet: Bitmap, val scale: Int, val folder: String) {
+    private inner class PetWindow(
+        val brain: PetBrain,
+        val sheet: Bitmap,
+        val scale: Int,
+        val folder: String,
+        /** La mascota que la creó (sólo en las crías). */
+        val parent: PetWindow? = null,
+    ) {
         private val view = SpriteView()
         private val params = WindowManager.LayoutParams(
             brain.frameW * scale,
@@ -306,14 +313,24 @@ class PetService : Service() {
         private val tick = object : Runnable {
             override fun run() {
                 if (!attached) return
+                val animBefore = brain.animationId
+                val restartsBefore = brain.restarts
                 val delay = brain.tick()
+                if (brain.restarts != restartsBefore) {
+                    // Modo prueba: empieza de nuevo, las crías de la vuelta anterior sobran
+                    pets.filter { it.parent === this@PetWindow }.forEach { it.dismiss() }
+                } else if (brain.animationId != animBefore) {
+                    // Cambió de movimiento: si a una cría le falta un suspiro para acabar,
+                    // que acabe ya (si no, al salir de la tina se ven dos ovejas un momento)
+                    pets.filter { it.parent === this@PetWindow && it.brain.remainingMs() < 300 }.forEach { it.dismiss() }
+                }
                 for (c in brain.takeChildren()) {
                     val cb = PetBrain(brain.def, brain.area, brain.frameW, brain.frameH, c)
                     cb.scale = scale
                     cb.others = ::allBrains
                     cb.speed = speed
                     cb.start()
-                    PetWindow(cb, sheet, scale, folder).show()
+                    PetWindow(cb, sheet, scale, folder, parent = this@PetWindow).show()
                 }
                 if (brain.finished) { remove(); return }
                 update(glideFor = delay.toLong())
@@ -346,9 +363,17 @@ class PetService : Service() {
             return true
         }
 
+        /** Quita una cría ya (sin esperar a su siguiente paso). */
+        fun dismiss() {
+            brain.kill()
+            handler.removeCallbacks(tick)
+            handler.post(tick)
+        }
+
         fun play(id: Int, loop: Boolean) {
             brain.loopId = if (loop) id else -1
             handler.removeCallbacks(toss)
+            pets.filter { it.parent === this }.forEach { it.dismiss() }
             brain.play(id)
             handler.removeCallbacks(tick)
             handler.post(tick)

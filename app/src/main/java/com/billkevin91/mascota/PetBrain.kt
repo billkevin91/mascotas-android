@@ -62,6 +62,16 @@ class PetBrain(
     var loopId = -1
     /** Velocidad general: 0.5 = la mitad de rápido. */
     var speed = 1.0
+    /** Sube cada vez que el modo prueba empieza de nuevo un movimiento (las crías anteriores sobran). */
+    var restarts = 0
+        private set
+
+    /** Milisegundos que le quedan si está en su último movimiento (sin siguiente); si no, muchísimos. */
+    fun remainingMs(): Long {
+        val a = current ?: return 0
+        if (a.onEnd.isNotEmpty()) return Long.MAX_VALUE
+        return ((totalSteps - step).coerceAtLeast(0) * windowsTimer(interval) / speed.coerceAtLeast(0.1)).toLong()
+    }
 
     private var current: Animation? = null
     private var step = 0
@@ -168,6 +178,7 @@ class PetBrain(
     /** Empieza un movimiento de prueba; si es para caer y está en el suelo, desde arriba. */
     private fun startLoop(id: Int) {
         val a = def.animations[id] ?: return
+        restarts++
         val falls = (a.start.y.constant ?: 0.0) > 0 || (a.end.y.constant ?: 0.0) > 0
         if (falls && y >= area.bottom - frameH - 2) y = area.top + (area.bottom - area.top) / 4.0
         setAnimation(id)
