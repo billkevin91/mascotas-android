@@ -28,7 +28,7 @@
 </spawn>
 <spawn id="3" probability="3">
 <x>screenW+10</x>
-<y>areaH/2-(randS*areaH/2)/120-imageH</y>
+<y>areaH-imageH-(bathH/2+(randS*bathH/2)/120)</y>
 <next probability="0">21</next>
 </spawn>
 <spawn id="4" probability="3">
@@ -628,7 +628,7 @@
 <opacity>1</opacity>
 <interval>30</interval>
 </end>
-<sequence repeatfrom="0" repeat="(areaH/2+(randS*areaH/2)/120-imageH-68)/2">
+<sequence repeatfrom="0" repeat="(bathH/2+(randS*bathH/2)/120-imageH-68)/2">
 <frame>134</frame>
 <next probability="100" only="none">22</next>
 </sequence>
@@ -727,7 +727,7 @@
 <opacity>1</opacity>
 <interval>30</interval>
 </end>
-<sequence repeatfrom="0" repeat="(areaH/2+(randS*areaH/2)/120-imageH-10)/2">
+<sequence repeatfrom="0" repeat="(bathH/2+(randS*bathH/2)/120-imageH-10)/2">
 <frame>146</frame>
 <next probability="100" only="none">24</next>
 </sequence>
@@ -1689,7 +1689,7 @@
 </animations>
 <childs>
 <child animationid="21">
-<x>screenW+10-areaH/2-(randS*areaH/2)/120</x>
+<x>screenW+10-(bathH/2+(randS*bathH/2)/120)</x>
 <y>areaH-imageH</y>
 <next>23</next>
 </child>

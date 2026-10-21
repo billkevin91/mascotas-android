@@ -17,7 +17,7 @@ Es un port a Kotlin del motor de [desktopPet](https://github.com/Adrianotiger/de
 | `PetBrain.kt` | Movimiento, bordes, gravedad, lanzamiento e hijas (port de `FormPet.cs`) |
 | `PetService.kt` | Servicio que dibuja cada mascota en una ventanita flotante |
 | `MainActivity.kt` | Elegir mascota y tamaño, pedir el permiso y soltarla |
-| `app/src/main/assets/pets/` | Mascotas copiadas de desktopPet (sprites + animaciones) |
+| `app/src/main/assets/pets/` | Mascotas de desktopPet (sprites + animaciones; ver su README) |
 
 ## Instalarla
 

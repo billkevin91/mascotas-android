@@ -17,7 +17,15 @@ class Area {
 }
 
 /** Una mascota hija que hay que crear (salpicaduras, flores, otra oveja...). */
-class ChildRequest(val def: ChildDef, val parentX: Double, val parentY: Double, val parentFlipped: Boolean, val depth: Int)
+class ChildRequest(
+    val def: ChildDef,
+    val parentX: Double,
+    val parentY: Double,
+    val parentFlipped: Boolean,
+    val depth: Int,
+    /** El mismo azar que la madre: la tina y la oveja calculan su encuentro con él. */
+    val randS: Int,
+)
 
 /**
  * Movimiento y animaciones de una mascota. Es la lógica de FormPet.cs de desktopPet
@@ -46,6 +54,8 @@ class PetBrain(
     /** Todas las mascotas en pantalla, para chocar entre ellas. */
     var others: () -> List<PetBrain> = { emptyList() }
     val isDying get() = current?.id == def.kill
+    /** Nombre del movimiento actual en el XML (walk, sleep1a, batha...). */
+    val animationName get() = current?.name.orEmpty()
 
     private var current: Animation? = null
     private var step = 0
@@ -53,7 +63,7 @@ class PetBrain(
     private var totalSteps = 1
     private var startX = 0; private var startY = 0; private var endX = 0; private var endY = 0
     private var startInterval = 200; private var endInterval = 200
-    private var randS = 50
+    private var randS = child?.randS ?: 50
     private var killFade = 1.0
     private var tossVx = 0.0
     private var tossVy = 0.0
@@ -64,7 +74,7 @@ class PetBrain(
     fun start() {
         if (child == null) spawn()
         else {
-            x = value(child.def.x).toDouble()
+            x = childX(child).toDouble()
             y = value(child.def.y).toDouble()
             offsetY = 0.0
             setAnimation(child.def.next)
@@ -77,7 +87,7 @@ class PetBrain(
         if (step < 0) step = 0
         nextStep()
         step++
-        val ms = interval.coerceAtLeast(10)
+        val ms = windowsTimer(interval)
         clock += ms
         return ms
     }
@@ -205,7 +215,7 @@ class PetBrain(
         val depth = child?.depth ?: 0
         if (depth < 5) {
             def.children[id]?.forEach {
-                pendingChildren.add(ChildRequest(it, x, y, !movingLeft, depth + 1))
+                pendingChildren.add(ChildRequest(it, x, y, !movingLeft, depth + 1, randS))
             }
         }
         interval = startInterval
@@ -417,11 +427,30 @@ class PetBrain(
         return border(Only.PET_SIDE)
     }
 
+    /**
+     * Los XML se hicieron con el temporizador de Windows, que sólo avanza cada 15,6 ms:
+     * 40 ms duran en realidad ~47 y 50 ms ~62. Se imita para que no vayan más rápido.
+     */
+    private fun windowsTimer(ms: Int): Int {
+        val tick = 1000.0 / 64
+        return (Math.ceil(ms.coerceAtLeast(10) / tick) * tick).toInt()
+    }
+
+    /**
+     * Dónde aparece una hija. Si la madre mira a la derecha, las posiciones fijas
+     * de la pantalla (la tina, por ejemplo) se reflejan, porque la madre también
+     * entró por el otro lado; las relativas a la madre (imageX) usan el truco de desktopPet.
+     */
+    private fun childX(c: ChildRequest): Int {
+        if (!c.parentFlipped || c.def.x.text.contains("imageX")) return value(c.def.x)
+        return area.screenW - value(c.def.x, flipHack = false) - frameW
+    }
+
     /** Evalúa un valor del XML con las medidas actuales. */
-    private fun value(v: Value): Int {
+    private fun value(v: Value, flipHack: Boolean = true): Int {
         v.constant?.let { return it.toInt() }
         var text = v.text
-        if (child != null && child.parentFlipped) {
+        if (flipHack && child != null && child.parentFlipped) {
             // Igual que desktopPet: las hijas aparecen al otro lado si la madre mira a la derecha
             text = if (text.contains("-imageW")) text.replace("-imageW", "+imageW") else text.replace("imageW", "(-imageW)")
         }
@@ -433,6 +462,8 @@ class PetBrain(
                     "screenH" -> area.screenH.toDouble()
                     "areaW" -> (area.right - area.left).toDouble()
                     "areaH" -> area.bottom.toDouble()
+                    // Altura para la caída en diagonal hasta la tina (ver assets/pets/README.md)
+                    "bathH" -> minOf(area.bottom, area.screenW - frameW).toDouble()
                     "imageW" -> frameW.toDouble()
                     "imageH" -> frameH.toDouble()
                     "imageX" -> child?.parentX ?: x
