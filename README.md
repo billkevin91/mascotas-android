@@ -7,6 +7,8 @@ Es un port a Kotlin del motor de [desktopPet](https://github.com/Adrianotiger/de
 
 - Arrastra la mascota con el dedo, lánzala y verás cómo rebota y cae.
 - Toca dos veces para despedirla.
+- Si pones varias, reaccionan al chocar entre sí: las eSheep se dan la vuelta, rebotan
+  o se echan a dormir junto a la que ya duerme; las demás se dan la vuelta o siguen de largo.
 - Desde la notificación: **Otra más** o **Quitar todas**.
 
 | Archivo | Contenido |

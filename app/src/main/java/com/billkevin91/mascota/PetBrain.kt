@@ -41,6 +41,10 @@ class PetBrain(
     var dragging = false
     var tossing = false
     val isChild get() = child != null
+    /** Píxeles reales por píxel de mascota; sirve para comparar mascotas de distinto tamaño. */
+    var scale = 1
+    /** Todas las mascotas en pantalla, para chocar entre ellas. */
+    var others: () -> List<PetBrain> = { emptyList() }
     val isDying get() = current?.id == def.kill
 
     private var current: Animation? = null
@@ -54,6 +58,8 @@ class PetBrain(
     private var tossVx = 0.0
     private var tossVy = 0.0
     private val pendingChildren = ArrayList<ChildRequest>()
+    private var clock = 0L
+    private var lastTurn = -10_000L
 
     fun start() {
         if (child == null) spawn()
@@ -71,7 +77,9 @@ class PetBrain(
         if (step < 0) step = 0
         nextStep()
         step++
-        return interval.coerceAtLeast(10)
+        val ms = interval.coerceAtLeast(10)
+        clock += ms
+        return ms
     }
 
     fun takeChildren(): List<ChildRequest> {
@@ -260,11 +268,27 @@ class PetBrain(
             if (x + dx < area.left) {
                 val b = border(Only.VERTICAL)
                 if (b >= 0) { x = area.left.toDouble(); dx = 0.0; next = b; newAnimation = true } else leaving = true
+            } else {
+                // Lado derecho de otra mascota
+                val o = bumpInto(dx, dy)
+                if (o != null) {
+                    val b = interact(o)
+                    if (b >= 0) { x = boxOf(o)[2]; dx = 0.0; next = b; newAnimation = true }
+                    else if (canTurn()) { x = boxOf(o)[2]; dx = 0.0; movingLeft = !movingLeft; lastTurn = clock }
+                }
             }
         } else if (dx > 0) {
             if (x + dx + frameW > area.right) {
                 val b = border(Only.VERTICAL)
                 if (b >= 0) { x = (area.right - frameW).toDouble(); dx = 0.0; next = b; newAnimation = true } else leaving = true
+            } else {
+                // Lado izquierdo de otra mascota
+                val o = bumpInto(dx, dy)
+                if (o != null) {
+                    val b = interact(o)
+                    if (b >= 0) { x = boxOf(o)[0] - frameW; dx = 0.0; next = b; newAnimation = true }
+                    else if (canTurn()) { x = boxOf(o)[0] - frameW; dx = 0.0; movingLeft = !movingLeft; lastTurn = clock }
+                }
             }
         }
         if (!newAnimation && !leaving) {
@@ -314,6 +338,83 @@ class PetBrain(
         x += dx
         y += dy
         if (newAnimation) setAnimation(next)
+    }
+
+    // ---- Choques entre mascotas (SetPetInteractionAnimations de desktopPet) ----
+
+    /** Caja de otra mascota (izquierda, arriba, derecha, abajo) en mis píxeles. */
+    private fun boxOf(o: PetBrain): DoubleArray {
+        val f = o.scale.toDouble() / scale
+        val left = o.x * f
+        val top = (o.y + o.offsetY) * f
+        return doubleArrayOf(left, top, left + o.frameW * f, top + o.frameH * f)
+    }
+
+    /**
+     * Sin animación para el choque: se da la vuelta, pero sólo si su animación
+     * reacciona a las paredes y no lo ha hecho hace poco (si no, la atraviesa,
+     * como en desktopPet; así no queda rebotando entre dos mascotas).
+     */
+    private fun canTurn() = current?.onBorder?.isNotEmpty() == true && clock - lastTurn > 5000
+
+    /** La mascota con la que choco en este paso, si la hay. */
+    private fun bumpInto(dx: Double, dy: Double): PetBrain? {
+        if (isChild) return null
+        val nx = x + dx
+        val ny = y + dy
+        for (o in others()) {
+            if (o === this || o.isChild || o.finished || o.dragging || o.tossing || o.isDying || o.current == null) continue
+            val (l, t, r, b) = boxOf(o).toList()
+            if (ny >= b || ny + frameH <= t) continue
+            val hit = if (dx < 0) {
+                // Mi borde izquierdo cruza su borde derecho y queda sitio para pasar
+                nx <= r && nx >= r + dx && r < area.right - frameW
+            } else {
+                nx + frameW >= l && nx + frameW <= l + dx && l > area.left + frameW
+            }
+            if (hit) return o
+        }
+        return null
+    }
+
+    /**
+     * Elige qué hacer al chocar y, si toca, también cambia a la otra mascota:
+     * 1) las dos hacen la misma animación, 2) imito lo que hace la otra (50 %),
+     * 3) cada una reacciona por su cuenta. Devuelve -1 si no tengo reacción.
+     */
+    private fun interact(o: PetBrain): Int {
+        val mine = current ?: return -1
+        val theirs = o.current ?: return border(Only.PET_SIDE)
+        // Los números de animación sólo significan lo mismo en mascotas del mismo tipo
+        val sameKind = o.def === def
+        val sameDirection = movingLeft == o.movingLeft ||
+            (movingLeft && o.x * o.scale > x * scale) ||
+            (!movingLeft && o.x * o.scale < x * scale)
+        fun sideways(n: Next) = n.only == Only.PET_SIDE || n.only == Only.NONE || n.only == Only.VERTICAL_PLUS
+
+        val common = ArrayList<Next>()
+        var mimic = -1
+        for (n in mine.onBorder) {
+            if (!sideways(n)) continue
+            if (sameKind && theirs.id == n.id) mimic = n.id
+            if (sameDirection) {
+                if (mimic != -1) break else continue
+            }
+            if (n.probability == 0) continue
+            if (sameKind && theirs.onBorder.any { it.id == n.id && it.probability > 0 && sideways(it) }) common.add(n)
+        }
+
+        if (common.isNotEmpty()) {
+            val id = pickNext(common, Only.PET_SIDE)
+            if (id >= 0) o.setAnimation(id)
+            return id
+        }
+        if (mimic > 0 && rnd.nextInt(100) < 50) return mimic
+        if (!sameDirection) {
+            val other = o.pickNext(theirs.onBorder, Only.PET_SIDE)
+            if (other >= 0) o.setAnimation(other)
+        }
+        return border(Only.PET_SIDE)
     }
 
     /** Evalúa un valor del XML con las medidas actuales. */

@@ -144,9 +144,13 @@ class PetService : Service() {
         val scale = (density * size).roundToInt().coerceAtLeast(1)
         val area = areas.getOrPut(scale) { Area().also { measure(it, scale) } }
         val brain = PetBrain(def, area, sheet.width / def.tilesX, sheet.height / def.tilesY)
+        brain.scale = scale
+        brain.others = ::allBrains
         brain.start()
         PetWindow(brain, sheet, scale).show()
     }
+
+    private fun allBrains(): List<PetBrain> = pets.map { it.brain }
 
     private fun removeAll() {
         for (p in ArrayList(pets)) p.remove()
@@ -243,6 +247,8 @@ class PetService : Service() {
                 val delay = brain.tick()
                 for (c in brain.takeChildren()) {
                     val cb = PetBrain(brain.def, brain.area, brain.frameW, brain.frameH, c)
+                    cb.scale = scale
+                    cb.others = ::allBrains
                     cb.start()
                     PetWindow(cb, sheet, scale).show()
                 }
