@@ -51,9 +51,24 @@ class Animation(
     val hasGravity get() = onGravity.isNotEmpty()
 }
 
-class Spawn(val probability: Int, val x: Value, val y: Value, val next: Int)
+class Spawn(val probability: Int, val x: Value, val y: Value, val next: Int, val id: Int = 0, val nextProbability: Int = 100)
 
 class ChildDef(val x: Value, val y: Value, val next: Int)
+
+/** Datos de la cabecera del XML (no afectan al movimiento; el editor los conserva). */
+class Header(
+    val author: String = "",
+    val title: String = "",
+    val petName: String = "",
+    val version: String = "",
+    val info: String = "",
+    val application: String = "1",
+    /** Icono .ico/.png en base64. */
+    val icon: String = "",
+)
+
+/** Sonido (mp3/wav en base64) que suena al empezar la animación [animationId]. */
+class Sound(val animationId: Int, val probability: Int, val loop: Int, val base64: String)
 
 class PetDef(
     val title: String,
@@ -64,6 +79,8 @@ class PetDef(
     val animations: Map<Int, Animation>,
     val spawns: List<Spawn>,
     val children: Map<Int, List<ChildDef>>,
+    val header: Header = Header(title = title),
+    val sounds: List<Sound> = emptyList(),
 ) {
     private fun idOf(name: String, default: Int) = animations.values.firstOrNull { it.name == name }?.id ?: default
 
@@ -180,14 +197,25 @@ class PetDef(
                     x = Value(s.text("x")),
                     y = Value(s.text("y")),
                     next = s.text("next").toIntOrNull() ?: 1,
+                    id = s.getAttribute("id").trim().toIntOrNull() ?: 0,
+                    nextProbability = s.kid("next")?.getAttribute("probability")?.trim()?.toIntOrNull() ?: 100,
                 )
             }
             val children = root.kid("childs")?.kids("child").orEmpty().groupBy(
                 { it.getAttribute("animationid").trim().toInt() },
                 { ChildDef(Value(it.text("x")), Value(it.text("y")), it.text("next").toIntOrNull() ?: -1) },
             )
+            val sounds = root.kid("sounds")?.kids("sound").orEmpty().map { e ->
+                Sound(
+                    animationId = e.getAttribute("animationid").trim().toIntOrNull() ?: 0,
+                    probability = e.text("probability").toIntOrNull() ?: 100,
+                    loop = e.text("loop").toIntOrNull() ?: 0,
+                    base64 = e.text("base64"),
+                )
+            }
+            val title = header?.text("title")?.ifEmpty { null } ?: "Mascota"
             return PetDef(
-                title = header?.text("title")?.ifEmpty { null } ?: "Mascota",
+                title = title,
                 tilesX = image.text("tilesx").toInt(),
                 tilesY = image.text("tilesy").toInt(),
                 png = image.text("png"),
@@ -195,6 +223,16 @@ class PetDef(
                 animations = animations,
                 spawns = spawns,
                 children = children,
+                header = Header(
+                    author = header?.text("author").orEmpty(),
+                    title = title,
+                    petName = header?.text("petname").orEmpty(),
+                    version = header?.text("version").orEmpty(),
+                    info = header?.text("info").orEmpty(),
+                    application = header?.text("application")?.ifEmpty { null } ?: "1",
+                    icon = header?.text("icon").orEmpty(),
+                ),
+                sounds = sounds,
             )
         }
 

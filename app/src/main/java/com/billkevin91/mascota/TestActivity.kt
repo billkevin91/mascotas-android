@@ -29,7 +29,8 @@ class TestActivity : Activity() {
     }
 
     private val green = Color.rgb(62, 125, 46)
-    private var pet = MainActivity.PETS.first()
+    private var pet = PetLibrary.BUNDLED.first()
+    private var entries = emptyList<PetEntry>()
     private var moves = emptyList<Move>()
     private lateinit var adapter: ArrayAdapter<Move>
     private lateinit var search: EditText
@@ -41,7 +42,8 @@ class TestActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        pet = prefs.getString(MainActivity.PREF_PET, null)?.takeIf { it in MainActivity.PETS } ?: MainActivity.PETS.first()
+        entries = PetLibrary.all(this)
+        pet = prefs.getString(MainActivity.PREF_PET, null)?.takeIf { id -> entries.any { it.id == id } } ?: PetLibrary.BUNDLED.first()
 
         val col = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -62,12 +64,11 @@ class TestActivity : Activity() {
         })
 
         val spinner = Spinner(this)
-        val names = MainActivity.PETS.map { MainActivity.NAMES[it] ?: it }
-        spinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, names)
-        spinner.setSelection(MainActivity.PETS.indexOf(pet))
+        spinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, entries.map { it.name })
+        spinner.setSelection(entries.indexOfFirst { it.id == pet }.coerceAtLeast(0))
         spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                val chosen = MainActivity.PETS[position]
+                val chosen = entries[position].id
                 if (chosen != pet || moves.isEmpty()) { pet = chosen; load() }
             }
             override fun onNothingSelected(parent: AdapterView<*>?) {}
@@ -134,7 +135,7 @@ class TestActivity : Activity() {
         status.text = "Cargando movimientos..."
         val folder = pet
         Thread {
-            val def = runCatching { assets.open("pets/$folder/animations.xml").use { PetDef.parse(it) } }.getOrNull()
+            val def = runCatching { PetLibrary.load(this, folder) }.getOrNull()
             val list = def?.animations?.values?.sortedBy { it.id }?.map { a ->
                 val ms = a.start.interval.constant?.toInt()
                 val parts = ArrayList<String>()
@@ -155,7 +156,7 @@ class TestActivity : Activity() {
             runOnUiThread {
                 if (folder != pet) return@runOnUiThread
                 moves = list
-                status.text = "${list.size} movimientos de ${MainActivity.NAMES[folder] ?: folder}"
+                status.text = "${list.size} movimientos de ${entries.firstOrNull { it.id == folder }?.name ?: folder}"
                 filter()
             }
         }.start()

@@ -1,9 +1,9 @@
 package com.billkevin91.mascota
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.BitmapDrawable
@@ -19,6 +19,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import kotlin.math.roundToInt
 
 class MainActivity : Activity() {
@@ -29,13 +30,7 @@ class MainActivity : Activity() {
         const val PREF_SIZE = "size"
         const val PREF_SPEED = "speed"
         const val PREF_NAMES = "names"
-
-        /** Carpetas en assets/pets (mascotas de desktopPet). */
-        val PETS = listOf("esheep64", "blue_sheep", "pink_sheep", "neko", "pink_neko", "fox", "pink_fox")
-        val NAMES = mapOf(
-            "esheep64" to "eSheep", "blue_sheep" to "Oveja azul", "pink_sheep" to "Oveja rosa",
-            "neko" to "Neko", "pink_neko" to "Neko rosa", "fox" to "Zorrito", "pink_fox" to "Zorrito rosa",
-        )
+        private const val IMPORT = 7
         private val SIZES = listOf("Pequeña" to 0.75f, "Mediana" to 1f, "Grande" to 1.5f, "Enorme" to 2f)
         private val SPEEDS = listOf("Lenta" to 0.5f, "Tranquila" to 0.75f, "Normal" to 1f, "Rápida" to 1.25f)
 
@@ -70,7 +65,8 @@ class MainActivity : Activity() {
     private lateinit var grant: Button
     private val petCards = HashMap<String, View>()
     private val sizeButtons = ArrayList<Pair<Float, Button>>()
-    private var pet = PETS.first()
+    private lateinit var grid: LinearLayout
+    private var pet = PetLibrary.BUNDLED.first()
     private var size = 1f
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).roundToInt()
@@ -78,7 +74,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
-        pet = prefs.getString(PREF_PET, null)?.takeIf { it in PETS } ?: PETS.first()
+        pet = prefs.getString(PREF_PET, null)?.takeIf { PetLibrary.exists(this, it) } ?: PetLibrary.BUNDLED.first()
         size = prefs.getFloat(PREF_SIZE, 1f)
 
         val col = LinearLayout(this).apply {
@@ -100,14 +96,12 @@ class MainActivity : Activity() {
         col.addView(grant)
 
         col.addView(title("Elige tu mascota"))
-        val grid = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        PETS.chunked(3).forEach { rowPets ->
-            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            rowPets.forEach { folder -> row.addView(card(folder), LinearLayout.LayoutParams(0, dp(110), 1f).apply { setMargins(dp(4), dp(4), dp(4), dp(4)) }) }
-            repeat(3 - rowPets.size) { row.addView(View(this), LinearLayout.LayoutParams(0, 0, 1f)) }
-            grid.addView(row)
-        }
+        grid = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        fillGrid()
         col.addView(grid)
+        col.addView(button("Importar mascota (animations.xml)") { pickXml() })
+        col.addView(text("Sirven las de desktopPet y las que hagas con su PetEditor. " +
+            "Para quitar una importada, mantenla pulsada.").apply { textSize = 12f; alpha = 0.6f })
 
         col.addView(title("Tamaño"))
         val sizes = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -144,12 +138,12 @@ class MainActivity : Activity() {
         // Para la prueba automática: adb shell am start ... --es soltar esheep64,neko
         val test = intent.getStringExtra("soltar")
         if (test != null && Settings.canDrawOverlays(this)) {
-            test.split(',').filter { it in PETS }.forEach { PetService.add(this, it, size) }
+            test.split(',').filter { PetLibrary.exists(this, it) }.forEach { PetService.add(this, it, size) }
             // ... --es mover esheep64:7 --ez nombres true (modo prueba)
             if (intent.hasExtra("nombres")) prefs.edit().putBoolean(PREF_NAMES, intent.getBooleanExtra("nombres", false)).apply()
             intent.getStringExtra("mover")?.split(',')?.forEach { m ->
                 val (p, id) = m.split(':').let { it[0] to (it.getOrNull(1)?.toIntOrNull() ?: -1) }
-                if (p in PETS) PetService.play(this, p, id, true)
+                if (PetLibrary.exists(this, p)) PetService.play(this, p, id, true)
             }
             return
         }
@@ -192,10 +186,52 @@ class MainActivity : Activity() {
         for ((f, b) in sizeButtons) b.alpha = if (f == size) 1f else 0.55f
     }
 
-    private fun card(folder: String): View {
-        val icon = runCatching {
-            assets.open("pets/$folder/icon.png").use { BitmapFactory.decodeStream(it) }
-        }.getOrNull()
+    private fun fillGrid() {
+        grid.removeAllViews()
+        petCards.clear()
+        PetLibrary.all(this).chunked(3).forEach { rowPets ->
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            rowPets.forEach { e -> row.addView(card(e), LinearLayout.LayoutParams(0, dp(110), 1f).apply { setMargins(dp(4), dp(4), dp(4), dp(4)) }) }
+            repeat(3 - rowPets.size) { row.addView(View(this), LinearLayout.LayoutParams(0, 0, 1f)) }
+            grid.addView(row)
+        }
+    }
+
+    private fun pickXml() {
+        val i = Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*")
+            .putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("text/xml", "application/xml", "text/plain", "application/octet-stream"))
+        runCatching { startActivityForResult(i, IMPORT) }
+            .onFailure { Toast.makeText(this, "No hay explorador de archivos", Toast.LENGTH_LONG).show() }
+    }
+
+    @Deprecated("Activity sin AndroidX")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        val uri = data?.data ?: return
+        if (requestCode != IMPORT || resultCode != RESULT_OK) return
+        Toast.makeText(this, "Importando...", Toast.LENGTH_SHORT).show()
+        Thread {
+            val result = runCatching {
+                contentResolver.openInputStream(uri)!!.use { PetLibrary.import(this, it) }
+            }
+            runOnUiThread {
+                result.onSuccess { e ->
+                    pet = e.id
+                    save()
+                    fillGrid()
+                    refresh()
+                    Toast.makeText(this, "¡${e.name} está lista para soltar!", Toast.LENGTH_LONG).show()
+                }.onFailure { err ->
+                    AlertDialog.Builder(this).setTitle("No se pudo importar")
+                        .setMessage(err.message ?: err.toString()).setPositiveButton("Vale", null).show()
+                }
+            }
+        }.start()
+    }
+
+    private fun card(e: PetEntry): View {
+        val folder = e.id
+        val icon = PetLibrary.icon(this, folder)
         val v = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
@@ -209,11 +245,24 @@ class MainActivity : Activity() {
                 scaleType = ImageView.ScaleType.FIT_CENTER
             }, LinearLayout.LayoutParams(dp(56), dp(56)))
             addView(TextView(this@MainActivity).apply {
-                text = NAMES[folder] ?: folder
+                text = e.name
                 gravity = Gravity.CENTER
                 textSize = 13f
+                maxLines = 2
             })
             setOnClickListener { pet = folder; save(); refresh() }
+            if (!e.bundled) setOnLongClickListener {
+                AlertDialog.Builder(this@MainActivity).setTitle("¿Quitar ${e.name}?")
+                    .setMessage("Se borra la mascota importada de este teléfono.")
+                    .setPositiveButton("Quitar") { _, _ ->
+                        PetLibrary.delete(this@MainActivity, folder)
+                        if (pet == folder) { pet = PetLibrary.BUNDLED.first(); save() }
+                        fillGrid()
+                        refresh()
+                    }
+                    .setNegativeButton("Cancelar", null).show()
+                true
+            }
         }
         petCards[folder] = v
         return v

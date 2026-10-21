@@ -11,7 +11,6 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.content.res.Configuration
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -24,7 +23,6 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.SystemClock
 import android.provider.Settings
-import android.util.Base64
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -109,7 +107,7 @@ class PetService : Service() {
                     if (pets.isEmpty()) stopSelf()
                     return START_NOT_STICKY
                 }
-                val pet = intent.getStringExtra(EXTRA_PET) ?: MainActivity.PETS.first()
+                val pet = intent.getStringExtra(EXTRA_PET) ?: PetLibrary.BUNDLED.first()
                 val id = intent.getIntExtra(EXTRA_ANIMATION, -1)
                 val loop = intent.getBooleanExtra(EXTRA_LOOP, false)
                 if (id < 0) {
@@ -128,7 +126,8 @@ class PetService : Service() {
             else -> {
                 // Sin intent = Android reinició el servicio: vuelve la última mascota elegida
                 val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
-                val pet = intent?.getStringExtra(EXTRA_PET) ?: prefs.getString(MainActivity.PREF_PET, null) ?: MainActivity.PETS.first()
+                val pet = (intent?.getStringExtra(EXTRA_PET) ?: prefs.getString(MainActivity.PREF_PET, null))
+                    ?.takeIf { PetLibrary.exists(this, it) } ?: PetLibrary.BUNDLED.first()
                 val size = if (intent?.hasExtra(EXTRA_SIZE) == true) intent.getFloatExtra(EXTRA_SIZE, 1f)
                 else prefs.getFloat(MainActivity.PREF_SIZE, 1f)
                 if (!Settings.canDrawOverlays(this)) {
@@ -185,8 +184,9 @@ class PetService : Service() {
 
     private fun addPet(folder: String, size: Float): PetWindow? {
         if (pets.count { !it.brain.isChild } >= MAX_PETS) return null
-        val def = defs.getOrPut(folder) { assets.open("pets/$folder/animations.xml").use { PetDef.parse(it) } }
-        val sheet = sheets.getOrPut(folder) { loadSheet(def) }
+        if (!PetLibrary.exists(this, folder)) return null
+        val def = defs.getOrPut(folder) { PetLibrary.load(this, folder) }
+        val sheet = sheets.getOrPut(folder) { PetLibrary.sheet(def) }
         val density = resources.displayMetrics.density
         val scale = (density * size).roundToInt().coerceAtLeast(1)
         val area = areas.getOrPut(scale) { Area().also { measure(it, scale) } }
@@ -202,32 +202,6 @@ class PetService : Service() {
 
     private fun removeAll() {
         for (p in ArrayList(pets)) p.remove()
-    }
-
-    private fun loadSheet(def: PetDef): Bitmap {
-        val bytes = Base64.decode(def.png.filterNot { it.isWhitespace() }, Base64.DEFAULT)
-        val opts = BitmapFactory.Options().apply { inMutable = true; inPreferredConfig = Bitmap.Config.ARGB_8888 }
-        val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
-        val key = transparentColor(def.transparency) ?: return bmp
-        val px = IntArray(bmp.width * bmp.height)
-        bmp.getPixels(px, 0, bmp.width, 0, 0, bmp.width, bmp.height)
-        for (i in px.indices) if (px[i] or 0xFF000000.toInt() == key) px[i] = 0
-        bmp.setPixels(px, 0, bmp.width, 0, 0, bmp.width, bmp.height)
-        return bmp
-    }
-
-    /** Nombres de color de .NET que usan los XML para el fondo transparente. */
-    private fun transparentColor(name: String): Int? = when (name.trim().lowercase()) {
-        "magenta", "fuchsia" -> 0xFFFF00FF.toInt()
-        "green" -> 0xFF008000.toInt()
-        "lime" -> 0xFF00FF00.toInt()
-        "cyan", "aqua" -> 0xFF00FFFF.toInt()
-        "black" -> 0xFF000000.toInt()
-        "white" -> 0xFFFFFFFF.toInt()
-        "red" -> 0xFFFF0000.toInt()
-        "blue" -> 0xFF0000FF.toInt()
-        "yellow" -> 0xFFFFFF00.toInt()
-        else -> runCatching { Color.parseColor(name.trim()) or 0xFF000000.toInt() }.getOrNull()
     }
 
     /** Mide la pantalla en píxeles de mascota; el suelo queda sobre la barra de navegación. */
