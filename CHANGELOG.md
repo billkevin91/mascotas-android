@@ -2,6 +2,14 @@
 
 Todos los cambios de la app, del más nuevo al más antiguo.
 
+## [Sin publicar]
+
+### Mejorado
+- **Batería**: con la pantalla apagada o bloqueada las mascotas se esperan quietas (no gastan nada)
+  y vuelven al desbloquear. Con el ahorro de batería del teléfono activado, se mueven a pasos en vez
+  de deslizarse (mueven menos la ventana).
+- La prueba automática en el emulador mide el tiempo de CPU de la app con la pantalla encendida y apagada.
+
 ## 1.0 — 2026-10-21
 
 ### Añadido

@@ -6,8 +6,11 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.app.KeyguardManager
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.content.res.Configuration
 import android.graphics.Bitmap
@@ -21,6 +24,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.PowerManager
 import android.os.SystemClock
 import android.provider.Settings
 import android.view.Gravity
@@ -102,6 +106,22 @@ class PetService : Service() {
     private lateinit var sounds: PetSounds
     /** Probando movimientos: sólo se ve y se mueve la mascota de prueba. */
     private var testMode = false
+    /** Pantalla apagada o bloqueada: nadie las ve, así que se esperan quietas (ahorra batería). */
+    private var asleep = false
+    /** Ahorro de batería del sistema: sin deslizamiento entre pasos (mueve menos la ventana). */
+    private var powerSave = false
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.action) {
+                Intent.ACTION_SCREEN_OFF -> asleep = true
+                // Encima de la pantalla de bloqueo no se ven: se espera a que la desbloquees
+                Intent.ACTION_SCREEN_ON -> asleep = (getSystemService(KEYGUARD_SERVICE) as KeyguardManager).isKeyguardLocked
+                Intent.ACTION_USER_PRESENT -> asleep = false
+                PowerManager.ACTION_POWER_SAVE_MODE_CHANGED -> readPowerSave()
+            }
+            syncPaused()
+        }
+    }
     private val prefsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { p, _ -> readPrefs(p) }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -114,6 +134,21 @@ class PetService : Service() {
         val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
         readPrefs(prefs)
+        asleep = !(getSystemService(POWER_SERVICE) as PowerManager).isInteractive
+        readPowerSave()
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_USER_PRESENT)
+            addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
+        }
+        // Son avisos del sistema: llegan aunque el receptor no sea público
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(screenReceiver, filter, RECEIVER_NOT_EXPORTED)
+        else registerReceiver(screenReceiver, filter)
+    }
+
+    private fun readPowerSave() {
+        powerSave = (getSystemService(POWER_SERVICE) as PowerManager).isPowerSaveMode
     }
 
     private fun readPrefs(prefs: android.content.SharedPreferences) {
@@ -223,6 +258,7 @@ class PetService : Service() {
 
     override fun onDestroy() {
         getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(prefsListener)
+        runCatching { unregisterReceiver(screenReceiver) }
         removeAll()
         sounds.stopAll()
         handler.removeCallbacksAndMessages(null)
@@ -263,13 +299,20 @@ class PetService : Service() {
     private fun enterTest() {
         if (testMode) return
         testMode = true
-        for (p in pets) if (!p.test) p.pause()
+        syncPaused()
     }
 
     private fun exitTest() {
         testMode = false
         for (p in ArrayList(pets)) if (p.test) p.remove()
-        for (p in pets) p.resume()
+        syncPaused()
+    }
+
+    /** Se mueve sólo lo que se ve: nada con la pantalla apagada; en modo prueba, sólo la de prueba. */
+    private fun shouldRun(p: PetWindow) = !asleep && (!testMode || p.test)
+
+    private fun syncPaused() {
+        for (p in ArrayList(pets)) if (shouldRun(p)) p.resume() else p.pause()
     }
 
     private fun addPet(folder: String, size: Float, test: Boolean = false): PetWindow? {
@@ -287,7 +330,7 @@ class PetService : Service() {
         brain.start()
         val w = PetWindow(brain, sheet, scale, folder, test = test).takeIf { it.show() }
         // Una normal que llega mientras se prueban movimientos (p. ej. "Otra más") espera oculta
-        if (w != null && !test && testMode) w.pause()
+        if (w != null && !shouldRun(w)) w.pause()
         return w
     }
 
@@ -387,7 +430,7 @@ class PetService : Service() {
 
         private val tick = object : Runnable {
             override fun run() {
-                if (!attached) return
+                if (!attached || paused) return
                 val animBefore = brain.animationId
                 val restartsBefore = brain.restarts
                 val delay = brain.tick()
@@ -406,7 +449,8 @@ class PetService : Service() {
                     cb.others = ::allBrains
                     cb.speed = brain.speed
                     cb.start()
-                    PetWindow(cb, sheet, scale, folder, parent = this@PetWindow).show()
+                    PetWindow(cb, sheet, scale, folder, parent = this@PetWindow).takeIf { it.show() }
+                        ?.let { if (!shouldRun(it)) it.pause() }
                 }
                 if (brain.finished) { remove(); return }
                 update(glideFor = delay.toLong())
@@ -417,7 +461,7 @@ class PetService : Service() {
 
         private val toss = object : Runnable {
             override fun run() {
-                if (!attached || !brain.tossing) return
+                if (!attached || paused || !brain.tossing) return
                 val now = SystemClock.uptimeMillis()
                 brain.advanceToss((now - lastToss).toDouble())
                 lastToss = now
@@ -446,7 +490,7 @@ class PetService : Service() {
             handler.post(tick)
         }
 
-        /** Mientras se prueban movimientos: quieta e invisible (tampoco recibe toques). */
+        /** Mientras se prueban movimientos o con la pantalla apagada: quieta e invisible (tampoco recibe toques). */
         fun pause() {
             if (paused || !attached) return
             paused = true
@@ -564,7 +608,7 @@ class PetService : Service() {
             view.removeCallbacks(glide)
             // Al arrastrar, al volar o si reaparece en otro lado, va directo
             val far = Math.hypot((x - toX).toDouble(), (y - toY).toDouble()) > maxOf(params.width, params.height) * 1.5
-            if (glideFor > 0 && !brain.dragging && !brain.tossing && !far) {
+            if (glideFor > 0 && !powerSave && !brain.dragging && !brain.tossing && !far) {
                 fromX = params.x.toFloat(); fromY = params.y.toFloat()
                 toX = x; toY = y
                 glideStart = SystemClock.uptimeMillis()
