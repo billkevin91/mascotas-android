@@ -22,6 +22,11 @@ Un archivo `animations.xml` (el formato de [desktopPet](https://github.com/Adria
 - **Vista previa**: el modo "Probar movimientos" ya muestra cualquier movimiento o escena en pantalla; el editor lo usará para ver los cambios al momento.
 - **Pruebas automáticas** (`app/src/test`): cada cambio en el motor se prueba en GitHub antes de compilar.
 
+## A tener en cuenta al hacerlo
+
+- `PetService` guarda en memoria cada mascota cargada (`defs`, `sheets`): al guardar cambios de
+  una mascota que está en pantalla hay que borrarla de esa memoria para que use la versión nueva.
+
 ## Fases propuestas
 
 1. **Editar movimientos** de una mascota (si es incluida, se edita una copia):

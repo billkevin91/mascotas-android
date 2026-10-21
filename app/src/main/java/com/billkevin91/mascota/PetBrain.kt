@@ -1,3 +1,6 @@
+// Basado en desktopPet (https://github.com/Adrianotiger/desktopPet)
+// Copyright (c) 2016 Adriano Petrucci, licencia MIT (ver assets/pets/LICENSE.md y CREDITS.md).
+// Choques entre mascotas y lanzamiento: Zecheriah (https://github.com/ZechsVariety).
 package com.billkevin91.mascota
 
 import kotlin.math.min

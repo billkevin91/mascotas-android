@@ -1,3 +1,6 @@
+// Basado en desktopPet (https://github.com/Adrianotiger/desktopPet)
+// Copyright (c) 2016 Adriano Petrucci, licencia MIT (ver assets/pets/LICENSE.md y CREDITS.md).
+// Choques entre mascotas y lanzamiento: Zecheriah (https://github.com/ZechsVariety).
 package com.billkevin91.mascota
 
 import org.w3c.dom.Element
@@ -169,7 +172,18 @@ class PetDef(
 
     companion object {
         fun parse(input: InputStream): PetDef {
-            val doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(input)
+            val factory = DocumentBuilderFactory.newInstance().apply {
+                // Los XML importados vienen de fuera: sin DOCTYPE ni entidades (evita colgar la app)
+                runCatching { setFeature("http://apache.org/xml/features/disallow-doctype-decl", true) }
+                runCatching { setFeature("http://xml.org/sax/features/external-general-entities", false) }
+                runCatching { setFeature("http://xml.org/sax/features/external-parameter-entities", false) }
+                isExpandEntityReferences = false
+            }
+            // El lector de Android puede ignorar esas opciones: se comprueba también a mano
+            val bytes = input.readBytes()
+            val head = String(bytes, 0, minOf(bytes.size, 4096), Charsets.ISO_8859_1)
+            require("<!DOCTYPE" !in head && "<!ENTITY" !in head) { "el archivo usa DOCTYPE/ENTITY, que no se admiten" }
+            val doc = factory.newDocumentBuilder().parse(bytes.inputStream())
             val root = doc.documentElement
             val header = root.kid("header")
             val image = root.kid("image")!!
@@ -214,10 +228,13 @@ class PetDef(
                 )
             }
             val title = header?.text("title")?.ifEmpty { null } ?: "Mascota"
+            val tilesX = image.text("tilesx").toInt()
+            val tilesY = image.text("tilesy").toInt()
+            require(tilesX in 1..1000 && tilesY in 1..1000) { "cuadrícula de dibujos no válida ($tilesX x $tilesY)" }
             return PetDef(
                 title = title,
-                tilesX = image.text("tilesx").toInt(),
-                tilesY = image.text("tilesy").toInt(),
+                tilesX = tilesX,
+                tilesY = tilesY,
                 png = image.text("png"),
                 transparency = image.text("transparency"),
                 animations = animations,

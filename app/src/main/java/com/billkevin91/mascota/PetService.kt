@@ -559,7 +559,9 @@ class PetService : Service() {
             private var downX = 0f
             private var downY = 0f
             private var lastUp = 0L
-            private val samples = ArrayDeque<FloatArray>()
+            // x, y y tiempo; Double y no Float: con el teléfono encendido varios días
+            // uptimeMillis es tan grande que un Float lo redondea a 16-32 ms
+            private val samples = ArrayDeque<DoubleArray>()
 
             override fun onDraw(canvas: Canvas) {
                 val fw = brain.frameW
@@ -612,7 +614,7 @@ class PetService : Service() {
                         grabX = e.rawX - params.x
                         grabY = e.rawY - params.y
                         samples.clear()
-                        samples.addLast(floatArrayOf(e.rawX, e.rawY, now.toFloat()))
+                        samples.addLast(doubleArrayOf(e.rawX.toDouble(), e.rawY.toDouble(), now.toDouble()))
                         handler.removeCallbacks(toss)
                         brain.grab()
                         brain.offsetY = 0.0
@@ -625,7 +627,7 @@ class PetService : Service() {
                         brain.y = ((e.rawY - grabY) / scale).toDouble()
                         brain.offsetY = 0.0
                         val now = SystemClock.uptimeMillis()
-                        samples.addLast(floatArrayOf(e.rawX, e.rawY, now.toFloat()))
+                        samples.addLast(doubleArrayOf(e.rawX.toDouble(), e.rawY.toDouble(), now.toDouble()))
                         while (samples.size > 2 && samples[1][2] <= now - 80) samples.removeFirst()
                         update()
                     }
@@ -640,8 +642,8 @@ class PetService : Service() {
                             val elapsed = last[2] - first[2]
                             if (elapsed >= 8 && now - last[2] <= 80) {
                                 // Misma fuerza que desktopPet, en píxeles de mascota
-                                vx = ((last[0] - first[0]) / scale / elapsed * 10).toDouble()
-                                vy = ((last[1] - first[1]) / scale / elapsed * 10).toDouble()
+                                vx = (last[0] - first[0]) / scale / elapsed * 10
+                                vy = (last[1] - first[1]) / scale / elapsed * 10
                             }
                         }
                         brain.release(vx, vy)

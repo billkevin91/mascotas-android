@@ -41,6 +41,6 @@ Funciona desde Android 7.0. El plan del editor de mascotas está en [`docs/EDITO
 
 ## Créditos
 
-Mascotas y motor original: [desktopPet](https://github.com/Adrianotiger/desktopPet) de Adriano Petrucci
-y su comunidad (eSheep y Neko: Adriano; gSheep azul y rosa: Oliver B.; zorritos y Neko rosa: Michelle!).
-Licencia MIT en `app/src/main/assets/pets/LICENSE.md`.
+Ver [`CREDITS.md`](CREDITS.md): motor y mascotas de [desktopPet](https://github.com/Adrianotiger/desktopPet)
+(Adriano Petrucci, licencia MIT), con animaciones de Oliver B., Michelle! y Zecheriah, y avisos
+a tener en cuenta antes de publicar. En la app: botón "Créditos y licencias".

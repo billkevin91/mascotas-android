@@ -55,3 +55,17 @@ class PetDefTest {
         }
     }
 }
+
+class ImportSafetyTest {
+    @org.junit.Test(expected = Exception::class)
+    fun rechazaDoctype() {
+        val xml = """<?xml version="1.0"?><!DOCTYPE a [<!ENTITY x "xxxxxxxxxx"><!ENTITY y "&x;&x;&x;&x;">]>
+            <animations><image><tilesx>1</tilesx><tilesy>1</tilesy><png>&y;</png></image></animations>"""
+        PetDef.parse(xml.byteInputStream())
+    }
+
+    @org.junit.Test(expected = IllegalArgumentException::class)
+    fun rechazaCuadriculaCero() {
+        PetDef.parse("<animations><image><tilesx>0</tilesx><tilesy>1</tilesy><png>AA==</png></image></animations>".byteInputStream())
+    }
+}

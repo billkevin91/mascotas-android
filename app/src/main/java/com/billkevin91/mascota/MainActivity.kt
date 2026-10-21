@@ -132,6 +132,7 @@ class MainActivity : Activity() {
 
         col.addView(text("Mascotas del proyecto desktopPet de Adriano Petrucci y su comunidad " +
             "(github.com/Adrianotiger/desktopPet, licencia MIT).").apply { textSize = 12f; alpha = 0.6f; setPadding(0, dp(24), 0, 0) })
+        col.addView(button("Créditos y licencias") { showCredits() })
 
         // Android 15 dibuja detrás de las barras: deja espacio para ellas
         setContentView(ScrollView(this).apply { fitsSystemWindows = true; addView(col) })
@@ -196,6 +197,24 @@ class MainActivity : Activity() {
             repeat(3 - rowPets.size) { row.addView(View(this), LinearLayout.LayoutParams(0, 0, 1f)) }
             grid.addView(row)
         }
+    }
+
+    private fun showCredits() {
+        Thread {
+            val text = Credits.text(this)
+            runOnUiThread {
+                val tv = TextView(this).apply {
+                    this.text = text
+                    textSize = 13f
+                    setTextIsSelectable(true)
+                    autoLinkMask = android.text.util.Linkify.WEB_URLS
+                    setPadding(dp(20), dp(12), dp(20), dp(12))
+                }
+                AlertDialog.Builder(this).setTitle("Créditos y licencias")
+                    .setView(ScrollView(this).apply { addView(tv) })
+                    .setPositiveButton("Cerrar", null).show()
+            }
+        }.start()
     }
 
     private fun pickXml() {

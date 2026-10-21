@@ -66,6 +66,7 @@ object PetLibrary {
         require(def.animations.isNotEmpty()) { "El archivo no tiene movimientos" }
         val sheet = try { sheet(def) } catch (e: Exception) { null }
         requireNotNull(sheet) { "No se pudo leer la imagen de la mascota" }
+        require(sheet.width >= def.tilesX && sheet.height >= def.tilesY) { "La imagen es más pequeña que su cuadrícula de dibujos" }
         val name = def.header.petName.ifEmpty { def.title }.trim().ifEmpty { "Mascota" }
         return save(context, null, name, bytes, def, sheet)
     }
