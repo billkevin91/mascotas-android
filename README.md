@@ -12,7 +12,8 @@ Es un port a Kotlin del motor de [desktopPet](https://github.com/Adrianotiger/de
 - Desde la notificación: **Otra más** o **Quitar todas**.
 - **Velocidad**: Lenta, Tranquila, Normal o Rápida, para todas a la vez.
 - **Probar movimientos**: elige cualquiera de los movimientos del XML (con buscador) y la
-  mascota lo hace al momento; puede repetirlo y mostrar su nombre encima.
+  mascota lo hace al momento; puede repetirlo y mostrar su nombre encima. Es un modo aparte:
+  mientras pruebas, tus mascotas se esperan ocultas y sólo se mueve la de prueba.
 - **Importar mascotas**: cualquier `animations.xml` de desktopPet (las 26 de su carpeta
   [Pets](https://github.com/Adrianotiger/desktopPet/tree/master/Pets) funcionan) o hecho con su PetEditor.
 

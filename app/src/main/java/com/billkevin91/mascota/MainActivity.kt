@@ -30,17 +30,18 @@ class MainActivity : Activity() {
         const val PREF_SIZE = "size"
         const val PREF_SPEED = "speed"
         const val PREF_NAMES = "names"
+        const val PREF_TEST_SPEED = "test_speed"
         private const val IMPORT = 7
         private val SIZES = listOf("Pequeña" to 0.75f, "Mediana" to 1f, "Grande" to 1.5f, "Enorme" to 2f)
         private val SPEEDS = listOf("Lenta" to 0.5f, "Tranquila" to 0.75f, "Normal" to 1f, "Rápida" to 1.25f)
 
         /** Botones de velocidad (se guardan y el servicio la aplica al momento). */
-        fun speedRow(a: Activity): LinearLayout {
+        fun speedRow(a: Activity, key: String = PREF_SPEED): LinearLayout {
             val prefs = a.getSharedPreferences(PREFS, MODE_PRIVATE)
             val row = LinearLayout(a).apply { orientation = LinearLayout.HORIZONTAL }
             val buttons = ArrayList<Pair<Float, Button>>()
             fun paint() {
-                val current = prefs.getFloat(PREF_SPEED, 1f)
+                val current = prefs.getFloat(key, 1f)
                 for ((f, b) in buttons) {
                     b.setTypeface(null, if (f == current) Typeface.BOLD else Typeface.NORMAL)
                     b.alpha = if (f == current) 1f else 0.55f
@@ -50,7 +51,7 @@ class MainActivity : Activity() {
                 val b = Button(a).apply {
                     text = name
                     isAllCaps = false
-                    setOnClickListener { prefs.edit().putFloat(PREF_SPEED, f).apply(); paint() }
+                    setOnClickListener { prefs.edit().putFloat(key, f).apply(); paint() }
                 }
                 buttons.add(f to b)
                 row.addView(b, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))

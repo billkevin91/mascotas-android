@@ -25,6 +25,7 @@
 
         <activity
             android:name=".TestActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
             android:exported="false"
             android:label="Probar movimientos" />
 

@@ -57,7 +57,8 @@ class TestActivity : Activity() {
             setTextColor(green)
         })
         col.addView(TextView(this).apply {
-            text = "Toca un movimiento y la mascota lo hará encima de esta pantalla. " +
+            text = "Mientras estás aquí, tus mascotas se esperan ocultas y sólo se mueve la de prueba. " +
+                "Toca un movimiento y la mascota lo hará encima de esta pantalla. " +
                 "Los que son parte de una escena (como el baño) se ven con la escena entera."
             textSize = 14f
             setPadding(0, dp(4), 0, dp(8))
@@ -84,8 +85,8 @@ class TestActivity : Activity() {
             setOnCheckedChangeListener { _, on -> prefs.edit().putBoolean(MainActivity.PREF_NAMES, on).apply() }
         })
 
-        col.addView(TextView(this).apply { text = "Velocidad de todas las mascotas"; setPadding(0, dp(6), 0, 0) })
-        col.addView(MainActivity.speedRow(this))
+        col.addView(TextView(this).apply { text = "Velocidad de la mascota de prueba"; setPadding(0, dp(6), 0, 0) })
+        col.addView(MainActivity.speedRow(this, MainActivity.PREF_TEST_SPEED))
 
         val buttons = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         buttons.addView(Button(this).apply {
@@ -94,9 +95,9 @@ class TestActivity : Activity() {
             setOnClickListener { PetService.play(this@TestActivity, pet, -1, false); status.text = "Se mueve sola otra vez" }
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         buttons.addView(Button(this).apply {
-            text = "Quitar todas"
+            text = "Quitar la de prueba"
             isAllCaps = false
-            setOnClickListener { PetService.clear(this@TestActivity) }
+            setOnClickListener { PetService.testClear(this@TestActivity); status.text = "" }
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         col.addView(buttons)
 
@@ -129,6 +130,17 @@ class TestActivity : Activity() {
         col.addView(list, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
 
         setContentView(col)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        PetService.testStart(this)
+    }
+
+    override fun onStop() {
+        // Al salir: la de prueba se va y tus mascotas siguen donde estaban
+        PetService.testEnd(this)
+        super.onStop()
     }
 
     private fun load() {

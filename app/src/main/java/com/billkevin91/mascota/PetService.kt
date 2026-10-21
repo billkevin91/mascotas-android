@@ -39,6 +39,9 @@ class PetService : Service() {
         const val ACTION_ADD = "com.billkevin91.mascota.ADD"
         const val ACTION_CLEAR = "com.billkevin91.mascota.CLEAR"
         const val ACTION_PLAY = "com.billkevin91.mascota.PLAY"
+        const val ACTION_TEST_START = "com.billkevin91.mascota.TEST_START"
+        const val ACTION_TEST_END = "com.billkevin91.mascota.TEST_END"
+        const val ACTION_TEST_CLEAR = "com.billkevin91.mascota.TEST_CLEAR"
         const val EXTRA_PET = "pet"
         const val EXTRA_SIZE = "size"
         const val EXTRA_ANIMATION = "animation"
@@ -62,6 +65,19 @@ class PetService : Service() {
         fun clear(context: Context) {
             context.startService(Intent(context, PetService::class.java).setAction(ACTION_CLEAR))
         }
+
+        /**
+         * Modo prueba aparte: al entrar, las mascotas normales se pausan y se ocultan;
+         * al salir, la de prueba se va y las normales siguen donde estaban.
+         */
+        fun testStart(context: Context) = send(context, ACTION_TEST_START)
+        fun testEnd(context: Context) = send(context, ACTION_TEST_END)
+        fun testClear(context: Context) = send(context, ACTION_TEST_CLEAR)
+
+        private fun send(context: Context, action: String) {
+            // Si el servicio no está y la app ya va a segundo plano, Android no deja arrancarlo: no hace falta
+            runCatching { context.startService(Intent(context, PetService::class.java).setAction(action)) }
+        }
     }
 
     private lateinit var wm: WindowManager
@@ -71,7 +87,10 @@ class PetService : Service() {
     private val sheets = HashMap<String, Bitmap>()
     private val areas = HashMap<Int, Area>()
     private var speed = 1.0
+    private var testSpeed = 1.0
     private var showNames = false
+    /** Probando movimientos: sólo se ve y se mueve la mascota de prueba. */
+    private var testMode = false
     private val prefsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { p, _ -> readPrefs(p) }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -87,9 +106,10 @@ class PetService : Service() {
 
     private fun readPrefs(prefs: android.content.SharedPreferences) {
         speed = prefs.getFloat(MainActivity.PREF_SPEED, 1f).toDouble()
+        testSpeed = prefs.getFloat(MainActivity.PREF_TEST_SPEED, 1f).toDouble()
         showNames = prefs.getBoolean(MainActivity.PREF_NAMES, false)
         for (p in pets) {
-            p.brain.speed = speed
+            p.brain.speed = if (p.test) testSpeed else speed
             p.refreshLabel()
         }
     }
@@ -102,28 +122,47 @@ class PetService : Service() {
                 stopSelf()
                 return START_NOT_STICKY
             }
+            ACTION_TEST_START -> {
+                enterTest()
+                if (pets.isEmpty()) stopSelf()
+                return START_STICKY
+            }
+            ACTION_TEST_END -> {
+                exitTest()
+                if (pets.isEmpty()) stopSelf()
+                return START_STICKY
+            }
+            ACTION_TEST_CLEAR -> {
+                for (p in ArrayList(pets)) if (p.test) p.remove()
+                if (pets.isEmpty()) stopSelf()
+                return START_STICKY
+            }
             ACTION_PLAY -> {
                 if (!Settings.canDrawOverlays(this)) {
                     if (pets.isEmpty()) stopSelf()
                     return START_NOT_STICKY
                 }
+                enterTest()
                 val pet = intent.getStringExtra(EXTRA_PET) ?: PetLibrary.BUNDLED.first()
                 val id = intent.getIntExtra(EXTRA_ANIMATION, -1)
                 val loop = intent.getBooleanExtra(EXTRA_LOOP, false)
                 if (id < 0) {
-                    // Que se muevan solas: fuera repeticiones y crías sobrantes (la tina...)
+                    // Que se mueva sola (la de prueba): fuera repeticiones y crías sobrantes (la tina...)
                     for (p in ArrayList(pets)) {
+                        if (!p.test) continue
                         if (p.brain.isChild) p.dismiss() else p.brain.stopLoop()
                     }
                 } else {
-                    // La última mascota de ese tipo; si no hay, aparece una
-                    // (una que repite la despedida en el modo prueba también sirve)
+                    // Siempre la mascota de prueba (nunca una normal); si es de otro tipo, se cambia
                     val target = pets.lastOrNull {
-                        !it.brain.isChild && (!it.brain.isDying || it.brain.loopId > 0) && it.folder == pet
+                        it.test && !it.brain.isChild && (!it.brain.isDying || it.brain.loopId > 0) && it.folder == pet
+                    } ?: run {
+                        for (p in ArrayList(pets)) if (p.test) p.remove()
+                        addPet(pet, getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE).getFloat(MainActivity.PREF_SIZE, 1f), test = true)
                     }
-                        ?: addPet(pet, getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE).getFloat(MainActivity.PREF_SIZE, 1f))
                     target?.play(id, loop)
                 }
+                if (pets.isEmpty()) stopSelf()
                 return START_STICKY
             }
             else -> {
@@ -185,8 +224,20 @@ class PetService : Service() {
 
     // ---- Mascotas ----
 
-    private fun addPet(folder: String, size: Float): PetWindow? {
-        if (pets.count { !it.brain.isChild } >= MAX_PETS) return null
+    private fun enterTest() {
+        if (testMode) return
+        testMode = true
+        for (p in pets) if (!p.test) p.pause()
+    }
+
+    private fun exitTest() {
+        testMode = false
+        for (p in ArrayList(pets)) if (p.test) p.remove()
+        for (p in pets) p.resume()
+    }
+
+    private fun addPet(folder: String, size: Float, test: Boolean = false): PetWindow? {
+        if (!test && pets.count { !it.brain.isChild && !it.test } >= MAX_PETS) return null
         if (!PetLibrary.exists(this, folder)) return null
         val def = defs.getOrPut(folder) { PetLibrary.load(this, folder) }
         val sheet = sheets.getOrPut(folder) { PetLibrary.sheet(def) }
@@ -196,12 +247,16 @@ class PetService : Service() {
         val brain = PetBrain(def, area, sheet.width / def.tilesX, sheet.height / def.tilesY)
         brain.scale = scale
         brain.others = ::allBrains
-        brain.speed = speed
+        brain.speed = if (test) testSpeed else speed
         brain.start()
-        return PetWindow(brain, sheet, scale, folder).takeIf { it.show() }
+        val w = PetWindow(brain, sheet, scale, folder, test = test).takeIf { it.show() }
+        // Una normal que llega mientras se prueban movimientos (p. ej. "Otra más") espera oculta
+        if (w != null && !test && testMode) w.pause()
+        return w
     }
 
-    private fun allBrains(): List<PetBrain> = pets.map { it.brain }
+    /** Las que están en pantalla (las pausadas no chocan con nadie). */
+    private fun allBrains(): List<PetBrain> = pets.filter { !it.paused }.map { it.brain }
 
     private fun removeAll() {
         for (p in ArrayList(pets)) p.remove()
@@ -248,7 +303,11 @@ class PetService : Service() {
         val folder: String,
         /** La mascota que la creó (sólo en las crías). */
         val parent: PetWindow? = null,
+        /** Mascota del modo prueba (y sus crías). */
+        val test: Boolean = parent?.test ?: false,
     ) {
+        var paused = false
+            private set
         private val view = SpriteView()
         private val params = WindowManager.LayoutParams(
             brain.frameW * scale,
@@ -308,7 +367,7 @@ class PetService : Service() {
                     val cb = PetBrain(brain.def, brain.area, brain.frameW, brain.frameH, c)
                     cb.scale = scale
                     cb.others = ::allBrains
-                    cb.speed = speed
+                    cb.speed = brain.speed
                     cb.start()
                     PetWindow(cb, sheet, scale, folder, parent = this@PetWindow).show()
                 }
@@ -350,6 +409,28 @@ class PetService : Service() {
             handler.post(tick)
         }
 
+        /** Mientras se prueban movimientos: quieta e invisible (tampoco recibe toques). */
+        fun pause() {
+            if (paused || !attached) return
+            paused = true
+            handler.removeCallbacks(tick)
+            handler.removeCallbacks(toss)
+            view.removeCallbacks(glide)
+            view.visibility = View.GONE
+            refreshLabel()
+        }
+
+        fun resume() {
+            if (!paused || !attached) return
+            paused = false
+            view.visibility = View.VISIBLE
+            if (brain.tossing) {
+                lastToss = SystemClock.uptimeMillis()
+                handler.post(toss)
+            }
+            handler.post(tick)
+        }
+
         fun play(id: Int, loop: Boolean) {
             handler.removeCallbacks(toss)
             pets.filter { it.parent === this }.forEach { it.dismiss() }
@@ -376,7 +457,8 @@ class PetService : Service() {
         }
 
         fun refreshLabel() {
-            val want = showNames && attached && !brain.isChild
+            // El letrero es cosa del modo prueba: sólo en la mascota de prueba
+            val want = showNames && attached && !brain.isChild && test && !paused
             var l = label
             if (!want) {
                 if (l != null) { runCatching { wm.removeView(l) }; label = null }
@@ -424,7 +506,8 @@ class PetService : Service() {
             pets.remove(this)
             if (pets.none { !it.brain.isChild }) {
                 for (p in ArrayList(pets)) p.remove()
-                stopSelf()
+                // Un momento después: al cambiar la mascota de prueba se quita una y llega otra
+                handler.post { if (pets.isEmpty()) stopSelf() }
             }
         }
 
