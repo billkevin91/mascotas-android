@@ -398,11 +398,3 @@ if __name__ == "__main__":
         f.write(xml(b64(sheet), b64(ic)))
     preview(sheet).save(os.path.join(HERE, "preview.png"))
     demo(sheet, os.path.join(HERE, "demo.gif"))
-    # La copia que va dentro de la app
-    app = os.path.join(HERE, "..", "..", "app", "src", "main", "assets", "pets", "carro_rojo")
-    if os.path.isdir(os.path.dirname(app)):
-        os.makedirs(app, exist_ok=True)
-        for name in ("animations.xml", "icon.png"):
-            with open(os.path.join(HERE, name), "rb") as src, open(os.path.join(app, name), "wb") as dst:
-                dst.write(src.read())
-    print("listo:", sheet.size)

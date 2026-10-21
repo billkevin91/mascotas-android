@@ -19,10 +19,7 @@ de la app y se muestra en la pantalla "Créditos y licencias".
 
 ## Mascotas incluidas
 
-**Carro rojo** (`carro_rojo`): dibujos y movimientos originales hechos para esta app
-(generador en [`extras/carro_rojo`](extras/carro_rojo)).
-
-Las demás están copiadas de la carpeta [Pets](https://github.com/Adrianotiger/desktopPet/tree/master/Pets) de desktopPet.
+Copiadas de la carpeta [Pets](https://github.com/Adrianotiger/desktopPet/tree/master/Pets) de desktopPet.
 
 | Mascota | Animaciones (XML) | Dibujos | Notas |
 | --- | --- | --- | --- |
@@ -52,8 +49,9 @@ Esto no es asesoría legal, pero conviene saberlo:
   los de eSheep (y las gSheep, basadas en ellos) se extrajeron de un programa de 1995 de otro autor,
   y los de Neko vienen de webneko.net. MIT no puede dar permiso sobre obras de terceros, así que
   sus derechos no están claros. Lo mismo pasa con los sonidos de las gSheep, cuyo origen no consta.
-- El **carro rojo** es dibujo propio de esta app, y los **zorritos** son dibujos originales de su
-  autora publicados en desktopPet: son la opción más segura, junto con las mascotas que dibujes tú.
+- Los **zorritos** son dibujos originales de su autora, publicados en desktopPet, y el **carro rojo**
+  (en `extras/carro_rojo`, para importar) es dibujo propio: son la opción más segura, junto con las
+  mascotas que dibujes tú.
 - El **icono de la app** sale de eSheep: para publicar es mejor uno propio.
 - El propio autor de desktopPet publica su app Android con eSheep en Google Play, pero eso no
   garantiza que otra app pueda hacerlo.

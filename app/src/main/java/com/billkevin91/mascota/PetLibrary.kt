@@ -16,10 +16,10 @@ class PetEntry(val id: String, val name: String, val bundled: Boolean)
  * (archivos animations.xml de desktopPet guardados en el teléfono). El editor guardará aquí.
  */
 object PetLibrary {
-    /** Carpetas en assets/pets: el carro rojo (de esta app) y mascotas de desktopPet. */
-    val BUNDLED = listOf("carro_rojo", "esheep64", "blue_sheep", "pink_sheep", "neko", "pink_neko", "fox", "pink_fox")
+    /** Carpetas en assets/pets (mascotas de desktopPet). */
+    val BUNDLED = listOf("esheep64", "blue_sheep", "pink_sheep", "neko", "pink_neko", "fox", "pink_fox")
     private val NAMES = mapOf(
-        "carro_rojo" to "Carro rojo", "esheep64" to "eSheep", "blue_sheep" to "Oveja azul", "pink_sheep" to "Oveja rosa",
+        "esheep64" to "eSheep", "blue_sheep" to "Oveja azul", "pink_sheep" to "Oveja rosa",
         "neko" to "Neko", "pink_neko" to "Neko rosa", "fox" to "Zorrito", "pink_fox" to "Zorrito rosa",
     )
     private const val USER = "user:"

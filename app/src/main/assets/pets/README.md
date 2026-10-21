@@ -1,8 +1,5 @@
 # Mascotas
 
-`carro_rojo`: hecho para esta app (lo genera `extras/carro_rojo/generar.py`; no editar a mano).
-El resto:
-
 Copiadas de [desktopPet](https://github.com/Adrianotiger/desktopPet/tree/master/Pets)
 (commit `f86f303`, licencia MIT en `LICENSE.md`).
 
