@@ -11,7 +11,7 @@ fail=0
 adb shell am start -W -n $PKG/.MainActivity
 sleep 4
 adb exec-out screencap -p > shots/menu.png
-adb shell am start -S -W -n $PKG/.MainActivity --es soltar esheep64,blue_sheep,neko,fox --es mover esheep64:7,blue_sheep:215 --ez nombres true
+adb shell am start -S -W -n $PKG/.MainActivity --es soltar esheep64,blue_sheep,neko,fox --es mover esheep64:47,blue_sheep:215 --ez nombres true
 adb shell input keyevent KEYCODE_HOME
 for i in 1 2 3 4 5 6; do
   sleep 5

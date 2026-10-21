@@ -113,7 +113,10 @@ class PetService : Service() {
                 val id = intent.getIntExtra(EXTRA_ANIMATION, -1)
                 val loop = intent.getBooleanExtra(EXTRA_LOOP, false)
                 if (id < 0) {
-                    for (p in pets) p.brain.loopId = -1
+                    // Que se muevan solas: fuera repeticiones y crías sobrantes (la tina...)
+                    for (p in ArrayList(pets)) {
+                        if (p.brain.isChild) p.dismiss() else p.brain.stopLoop()
+                    }
                 } else {
                     // La última mascota de ese tipo; si no hay, aparece una
                     val target = pets.lastOrNull { !it.brain.isChild && !it.brain.isDying && it.folder == pet }
@@ -371,10 +374,9 @@ class PetService : Service() {
         }
 
         fun play(id: Int, loop: Boolean) {
-            brain.loopId = if (loop) id else -1
             handler.removeCallbacks(toss)
             pets.filter { it.parent === this }.forEach { it.dismiss() }
-            brain.play(id)
+            brain.play(id, loop)
             handler.removeCallbacks(tick)
             handler.post(tick)
         }

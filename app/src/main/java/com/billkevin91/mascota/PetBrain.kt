@@ -166,22 +166,48 @@ class PetBrain(
     }
 
     /** Modo prueba: hace ya este movimiento. */
-    fun play(id: Int) {
+    fun play(id: Int, loop: Boolean) {
         if (isDying || isChild || def.animations[id] == null) return
         dragging = false
         tossing = false
-        // Que se vea: si estaba entrando o fuera de la pantalla, al centro del suelo
-        if (isOutside(partly = true)) toCenter()
-        startLoop(id)
+        // Muchos movimientos son trozos de una escena (el baño): se prueba la escena entera
+        val start = def.sceneStart(id)
+        scene = def.scene(start)
+        loopId = if (loop) start else -1
+        startScene(start)
     }
 
-    /** Empieza un movimiento de prueba; si es para caer y está en el suelo, desde arriba. */
-    private fun startLoop(id: Int) {
+    /** Movimientos de la escena que se está probando (al salir de ella, se repite). */
+    private var scene: Set<Int> = emptySet()
+    private var sawInside = false
+
+    /** Empieza una escena de prueba donde se pueda ver. */
+    private fun startScene(id: Int) {
         val a = def.animations[id] ?: return
         restarts++
-        val falls = (a.start.y.constant ?: 0.0) > 0 || (a.end.y.constant ?: 0.0) > 0
-        if (falls && y >= area.bottom - frameH - 2) y = area.top + (area.bottom - area.top) / 4.0
+        sawInside = false
+        offsetY = 0.0
+        val s = def.spawnFor(id)
+        if (s != null) {
+            // Empieza apareciendo: igual que cuando aparece sola (la tina depende de esto)
+            randS = rnd.nextInt(10, 90)
+            y = value(s.y).toDouble()
+            val sx = value(s.x)
+            x = (if (movingLeft) sx else area.screenW - sx - frameW).toDouble()
+        } else {
+            // Si estaba entrando o fuera de la pantalla, al centro del suelo;
+            // si es para caer y está en el suelo, desde arriba
+            if (isOutside(partly = true)) toCenter()
+            val falls = (a.start.y.constant ?: 0.0) > 0 || (a.end.y.constant ?: 0.0) > 0
+            if (falls && y >= area.bottom - frameH - 2) y = area.top + (area.bottom - area.top) / 4.0
+        }
         setAnimation(id)
+    }
+
+    /** Modo prueba: deja de repetir. */
+    fun stopLoop() {
+        loopId = -1
+        scene = emptySet()
     }
 
     private fun isOutside(partly: Boolean): Boolean = if (partly) {
@@ -310,11 +336,13 @@ class PetBrain(
 
         if (dragging || tossing) return
 
-        if (loopId > 0 && isOutside(partly = false) && def.animations[loopId] != null) {
-            // Repitiendo un movimiento que la sacó de la pantalla: vuelve a empezar en el centro
-            toCenter()
-            startLoop(loopId)
-            return
+        if (loopId > 0) {
+            if (!isOutside(partly = false)) sawInside = true
+            else if (sawInside) {
+                // Repitiendo una escena que la sacó de la pantalla: vuelve a empezar
+                startScene(loopId)
+                return
+            }
         }
 
         var dx = startX.toDouble()
@@ -373,7 +401,6 @@ class PetBrain(
             if (a.action == "flip") movingLeft = !movingLeft
             val outside = isOutside(partly = false)
             val nextAnimation = when {
-                loopId > 0 && def.animations[loopId] != null && a.id != def.kill -> loopId
                 outside -> -1
                 else -> pickNext(a.onEnd, if (y + frameH + dy >= area.bottom - 2) Only.TASKBAR else Only.NONE)
             }
@@ -382,10 +409,11 @@ class PetBrain(
                 opacity = killFade
                 if (killFade <= 0.1) finished = true
                 return
-            } else if (nextAnimation >= 0 && nextAnimation == loopId) {
+            } else if (loopId > 0 && nextAnimation !in scene) {
+                // Terminó la escena que se está probando: otra vez desde el principio
                 x += dx
                 y += dy
-                startLoop(loopId)
+                startScene(loopId)
                 return
             } else if (nextAnimation >= 0) {
                 next = nextAnimation

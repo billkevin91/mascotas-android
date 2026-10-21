@@ -55,7 +55,8 @@ class TestActivity : Activity() {
             setTextColor(green)
         })
         col.addView(TextView(this).apply {
-            text = "Toca un movimiento y la mascota lo hará encima de esta pantalla."
+            text = "Toca un movimiento y la mascota lo hará encima de esta pantalla. " +
+                "Los que son parte de una escena (como el baño) se ven con la escena entera."
             textSize = 14f
             setPadding(0, dp(4), 0, dp(8))
         })
@@ -122,6 +123,7 @@ class TestActivity : Activity() {
             }
             PetService.play(this, pet, m.id, loop.isChecked)
             status.text = "Haciendo: ${m.id} · ${m.name}" + if (loop.isChecked) " (repitiendo)" else ""
+            if (m.detail.contains("parte de la escena")) status.append(" — se ve la escena entera")
         }
         col.addView(list, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
 
@@ -141,7 +143,13 @@ class TestActivity : Activity() {
                 val x = a.start.x.constant
                 if (x != null && x != 0.0) parts.add("avanza ${abs(x).toInt()} px")
                 val names = def.animations
-                (a.onEnd.firstOrNull()?.let { names[it.id]?.name })?.let { parts.add("luego $it") }
+                val start = def.sceneStart(a.id)
+                val scene = def.scene(start)
+                when {
+                    start != a.id -> parts.add("parte de la escena de ${names[start]?.name}")
+                    scene.size > 1 -> parts.add("escena: " + scene.joinToString(" → ") { names[it]?.name.orEmpty() })
+                    else -> (a.onEnd.firstOrNull()?.let { names[it.id]?.name })?.let { parts.add("luego $it") }
+                }
                 Move(a.id, a.name, parts.joinToString(" · "))
             }.orEmpty()
             runOnUiThread {

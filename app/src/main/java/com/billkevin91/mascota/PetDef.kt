@@ -75,6 +75,81 @@ class PetDef(
     val fallSoft = idOf("fall soft", 1)
     val fallHard = idOf("fall hard", 1)
 
+    // ---- Escenas (modo prueba) ----
+    // Algunos movimientos son trozos de una escena: batha → bathb → bathc → bathd,
+    // con la tina como cría. Sueltos no tienen sentido, así que se prueba la escena entera.
+
+    /** ¿Ir a [e] es obligado? (en su situación, todas las opciones de la lista llevan ahí) */
+    private fun forced(e: Next, list: List<Next>) = list.all {
+        it.probability <= 0 || it.id == e.id || (e.only != Only.NONE && it.only != Only.NONE && it.only != e.only)
+    }
+
+    private class Way(val from: Int, val forced: Boolean)
+
+    /** Por dónde se puede llegar a cada movimiento (las crías llegan siempre desde su madre). */
+    private val waysIn: Map<Int, List<Way>> by lazy {
+        val map = HashMap<Int, ArrayList<Way>>()
+        for (a in animations.values) {
+            for (list in listOf(a.onEnd, a.onBorder, a.onGravity)) {
+                for (n in list) {
+                    if (n.probability > 0 && n.id != a.id) map.getOrPut(n.id) { ArrayList() }.add(Way(a.id, forced(n, list)))
+                }
+            }
+        }
+        for ((parent, list) in children) for (c in list) map.getOrPut(c.next) { ArrayList() }.add(Way(parent, true))
+        map
+    }
+
+    private val starts = HashMap<Int, Int>()
+
+    /**
+     * El movimiento con el que empieza la escena de [id]: se sube mientras sólo se pueda
+     * llegar a él a la fuerza y desde un único inicio. Si se llega por azar (walk elige
+     * dormir entre muchas cosas) o desde una forma de aparecer, empieza él mismo.
+     */
+    fun sceneStart(id: Int): Int = starts.getOrPut(id) { rootOf(id, 0, HashMap()) ?: id }
+
+    private fun rootOf(id: Int, depth: Int, memo: HashMap<Int, Int?>): Int? {
+        if (memo.containsKey(id)) return memo[id]
+        memo[id] = null // ciclo: sin inicio claro
+        val ways = waysIn[id].orEmpty()
+        val result = when {
+            spawns.any { it.next == id } -> id
+            ways.isEmpty() -> id
+            ways.any { !it.forced } -> id
+            depth > 12 -> null
+            else -> {
+                val roots = ways.map { rootOf(it.from, depth + 1, memo) }
+                if (roots.any { it == null }) null else roots.distinct().singleOrNull()
+            }
+        }
+        memo[id] = result
+        return result
+    }
+
+    /** Los movimientos de la escena que empieza en [start], en orden. */
+    fun scene(start: Int): Set<Int> {
+        val set = linkedSetOf(start)
+        val queue = ArrayDeque(listOf(start))
+        while (queue.isNotEmpty()) {
+            val a = animations[queue.removeFirst()] ?: continue
+            for (list in listOf(a.onEnd, a.onBorder, a.onGravity)) {
+                for (n in list) {
+                    if (n.probability <= 0 || n.id !in animations || n.id in set) continue
+                    if (forced(n, list) && sceneStart(n.id) == start) { set.add(n.id); queue.addLast(n.id) }
+                }
+            }
+        }
+        return set
+    }
+
+    /**
+     * Si [id] sólo se ve al aparecer (el baño de eSheep llega desde un lado), esa forma de
+     * aparecer, para colocar la mascota donde toca. Si también sale de otras formas (walk), null.
+     */
+    fun spawnFor(id: Int): Spawn? =
+        if (waysIn[id].isNullOrEmpty()) spawns.filter { it.next == id }.maxByOrNull { it.probability } else null
+
     companion object {
         fun parse(input: InputStream): PetDef {
             val doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(input)
