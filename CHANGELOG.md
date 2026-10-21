@@ -5,8 +5,8 @@ Todos los cambios de la app, del más nuevo al más antiguo.
 ## [Sin publicar] — versión 1.0 en desarrollo
 
 ### Añadido
-- **Carro rojo** ([`extras/carro_rojo`](extras/carro_rojo)): mascota nueva con dibujos originales,
-  lista para importar. Al despedirlo se va destrozando.
+- **Carro rojo**: mascota nueva incluida en la app, con dibujos originales (generador en
+  [`extras/carro_rojo`](extras/carro_rojo)). Al despedirlo se va destrozando; al caer fuerte rebota.
 - **Créditos y licencias**: botón en la app y [`CREDITS.md`](CREDITS.md) con los autores del motor
   y de cada mascota, la licencia MIT de desktopPet y avisos antes de publicar.
 - **Modo prueba aparte**: al probar movimientos, tus mascotas se esperan ocultas y sólo se mueve una

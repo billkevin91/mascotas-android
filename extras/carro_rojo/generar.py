@@ -7,7 +7,7 @@ import base64, io, math, os, random
 from PIL import Image, ImageDraw
 
 W, H = 72, 36          # tamaño de cada dibujo
-COLS, ROWS = 9, 3      # cuadrícula de la hoja
+COLS, ROWS = 9, 4      # cuadrícula de la hoja
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 # Colores
@@ -166,6 +166,21 @@ def rotate(img, deg):
     return up.rotate(deg, resample=Image.NEAREST, center=(W // 2, H // 2))
 
 
+def shift(img, dy):
+    out = Image.new("RGBA", (W, H), TRANS)
+    out.alpha_composite(img, (0, dy))
+    return out
+
+
+def dust(img, big):
+    d = ImageDraw.Draw(img)
+    for x, y, r in ((4, 31, 3), (9, 33, 2), (1, 33, 2), (65, 31, 3), (70, 33, 2), (60, 33, 2)) if big \
+            else ((4, 32, 2), (8, 33, 1), (66, 32, 2), (70, 33, 1)):
+        d.ellipse((x - r, y - r, x + r, y + r), fill=SMOKE_L)
+        d.point((x, y - r), fill=SMOKE)
+    return img
+
+
 def text_z(img, x, y, big):
     d = ImageDraw.Draw(img)
     s = 4 if big else 3
@@ -216,6 +231,12 @@ def frames():
         f.append(img)
     f.append(text_z(car(0), 58, 4, False))  # 25-26 durmiendo
     f.append(text_z(text_z(car(0), 58, 4, False), 64, 0, True))
+    # 27-31 aterrizajes: golpe fuerte (aplastado + polvo), rebote con el morro arriba, caer y asentarse
+    f.append(dust(car(0, squash=3), True))           # 27
+    f.append(shift(rotate(car(0), 4), -4))           # 28
+    f.append(shift(car(0), -2))                      # 29
+    f.append(dust(car(0, squash=1), False))          # 30
+    f.append(dust(car(0, squash=2), False))          # 31 aterrizaje suave
     return f
 
 
@@ -282,7 +303,7 @@ def xml(sheet_png, icon_png):
         anim(3, "rotate_b", [11, 10, 0], si=110, nexts=[(1, 100, N)]),
         anim(4, "drag", [13, 14], si=140, nexts=[(1, 100, N)]),
         anim(5, "fall", [15], sy=2, ey=10, si=60, ei=40, repeat="25", nexts=[(5, 100, N)], border=[(6, 100, N)]),
-        anim(6, "fall soft", [16, 16, 3, 1, 3], si=120, nexts=[(1, 70, N), (7, 30, N)]),
+        anim(6, "fall soft", [31, 16, 29, 3, 3], si=110, nexts=[(1, 70, N), (7, 30, N)]),
         anim(7, "idle", [3], si=300, repeat="random/10+4",
              nexts=[(1, 45, N), (8, 15, N), (9, 15, N), (13, 6, N), (10, 14, N), (7, 5, N)],
              gravity=[(5, 100, N)]),
@@ -296,7 +317,7 @@ def xml(sheet_png, icon_png):
              nexts=[(8, 40, N), (7, 60, N)], gravity=[(5, 100, N)]),
         anim(14, "kill", [3, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22, 22], si=220, so=1, eo=0),
         anim(15, "sync", [3], si=100, nexts=[(7, 100, N)]),
-        anim(16, "fall hard", [16, 16, 16, 3], si=150, nexts=[(1, 100, N)]),
+        anim(16, "fall hard", [27, 27, 28, 28, 29, 30, 3, 29, 3, 3], si=90, ei=140, nexts=[(1, 100, N)]),
     ]
     spawns = ('<spawn id="1" probability="60"><x>screenW+10</x><y>areaH-imageH</y><next probability="100">1</next></spawn>'
               '<spawn id="2" probability="40"><x>random*(screenW-imageW-50)/100+25</x><y>-imageH-20</y>'
@@ -357,6 +378,7 @@ def demo(sheet, path):
     for i in (11, 10, 0): add(i, 110, flip=True)
     for k in range(12): add((0, 1, 2)[k % 3], 120, 3, flip=True)
     for i in (3, 25, 26, 25, 26, 25, 26): add(i, 400)
+    for i in (27, 27, 28, 28, 29, 30, 3, 29, 3, 3): add(i, 110)
     for i in (3, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22, 22): add(i, 220)
     # Una sola paleta para todos los cuadros (si no, cada cuadro sale con otros colores)
     strip = Image.new("RGB", (seq[0][0].width, seq[0][0].height * len(seq)))
@@ -376,4 +398,11 @@ if __name__ == "__main__":
         f.write(xml(b64(sheet), b64(ic)))
     preview(sheet).save(os.path.join(HERE, "preview.png"))
     demo(sheet, os.path.join(HERE, "demo.gif"))
+    # La copia que va dentro de la app
+    app = os.path.join(HERE, "..", "..", "app", "src", "main", "assets", "pets", "carro_rojo")
+    if os.path.isdir(os.path.dirname(app)):
+        os.makedirs(app, exist_ok=True)
+        for name in ("animations.xml", "icon.png"):
+            with open(os.path.join(HERE, name), "rb") as src, open(os.path.join(app, name), "wb") as dst:
+                dst.write(src.read())
     print("listo:", sheet.size)

@@ -14,6 +14,9 @@ object Credits {
         • Adriano Petrucci: autor de desktopPet y del formato animations.xml. © 2016, licencia MIT (abajo).
         • Zecheriah (github.com/ZechsVariety): choques entre mascotas y lanzamiento en desktopPet.
 
+        CARRO ROJO
+        Dibujos y movimientos originales hechos para esta app.
+
         MASCOTAS INCLUIDAS (de la carpeta Pets de desktopPet)
         • eSheep: animaciones de Adriano Petrucci (choques y lanzamiento: Zecheriah). Dibujos extraídos por LiL_Stenly (spritedatabase.net) del eSheep original de 1995 (autor no confirmado).
         • Oveja azul "Ben" y oveja rosa "Pearl" (gSheep 8.0): Oliver B., a partir de eSheep. Incluyen sonidos.
