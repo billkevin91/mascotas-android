@@ -5,6 +5,9 @@ Todos los cambios de la app, del más nuevo al más antiguo.
 ## [Sin publicar] — versión 1.0 en desarrollo
 
 ### Añadido
+- **Quitar mascotas importadas**: botón con una lista para marcar las que se borran (también se van
+  de la pantalla si estaban paseando). Al importar una con el mismo nombre que otra tuya, se
+  reemplaza en vez de duplicarse.
 - **Corazón** ([`extras/corazon`](extras/corazon)): mascota nueva con dibujos originales, lista para
   importar: saludo militar, baila con sus audífonos, saluda, salta y se duerme.
 - **Carro rojo** ([`extras/carro_rojo`](extras/carro_rojo)): mascota nueva con dibujos originales,

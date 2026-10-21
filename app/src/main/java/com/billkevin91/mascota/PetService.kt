@@ -42,6 +42,7 @@ class PetService : Service() {
         const val ACTION_TEST_START = "com.billkevin91.mascota.TEST_START"
         const val ACTION_TEST_END = "com.billkevin91.mascota.TEST_END"
         const val ACTION_TEST_CLEAR = "com.billkevin91.mascota.TEST_CLEAR"
+        const val ACTION_FORGET = "com.billkevin91.mascota.FORGET"
         const val EXTRA_PET = "pet"
         const val EXTRA_SIZE = "size"
         const val EXTRA_ANIMATION = "animation"
@@ -73,6 +74,13 @@ class PetService : Service() {
         fun testStart(context: Context) = send(context, ACTION_TEST_START)
         fun testEnd(context: Context) = send(context, ACTION_TEST_END)
         fun testClear(context: Context) = send(context, ACTION_TEST_CLEAR)
+
+        /** Una mascota importada se borró o se reemplazó: fuera de la pantalla y de la memoria. */
+        fun forget(context: Context, pet: String) {
+            runCatching {
+                context.startService(Intent(context, PetService::class.java).setAction(ACTION_FORGET).putExtra(EXTRA_PET, pet))
+            }
+        }
 
         private fun send(context: Context, action: String) {
             // Si el servicio no está y la app ya va a segundo plano, Android no deja arrancarlo: no hace falta
@@ -129,6 +137,14 @@ class PetService : Service() {
             }
             ACTION_TEST_END -> {
                 exitTest()
+                if (pets.isEmpty()) stopSelf()
+                return START_STICKY
+            }
+            ACTION_FORGET -> {
+                val pet = intent.getStringExtra(EXTRA_PET)
+                for (p in ArrayList(pets)) if (p.folder == pet) p.remove()
+                defs.remove(pet)
+                sheets.remove(pet)
                 if (pets.isEmpty()) stopSelf()
                 return START_STICKY
             }

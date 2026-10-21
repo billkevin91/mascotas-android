@@ -67,6 +67,7 @@ class MainActivity : Activity() {
     private val petCards = HashMap<String, View>()
     private val sizeButtons = ArrayList<Pair<Float, Button>>()
     private lateinit var grid: LinearLayout
+    private lateinit var removeButton: Button
     private var pet = PetLibrary.BUNDLED.first()
     private var size = 1f
 
@@ -101,8 +102,12 @@ class MainActivity : Activity() {
         fillGrid()
         col.addView(grid)
         col.addView(button("Importar mascota (animations.xml)") { pickXml() })
-        col.addView(text("Sirven las de desktopPet y las que hagas con su PetEditor. " +
-            "Para quitar una importada, mantenla pulsada.").apply { textSize = 12f; alpha = 0.6f })
+        removeButton = button("Quitar mascotas importadas") { removeImported() }
+        removeButton.visibility = if (PetLibrary.all(this).any { !it.bundled }) View.VISIBLE else View.GONE
+        col.addView(removeButton)
+        col.addView(text("Sirven las de desktopPet y las que hagas con su PetEditor. Si importas una con " +
+            "el mismo nombre que otra tuya, se reemplaza. También puedes quitar una manteniéndola pulsada.")
+            .apply { textSize = 12f; alpha = 0.6f })
 
         col.addView(title("Tamaño"))
         val sizes = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -189,6 +194,7 @@ class MainActivity : Activity() {
     }
 
     private fun fillGrid() {
+        if (::removeButton.isInitialized) removeButton.visibility = if (PetLibrary.all(this).any { !it.bundled }) View.VISIBLE else View.GONE
         grid.removeAllViews()
         petCards.clear()
         PetLibrary.all(this).chunked(3).forEach { rowPets ->
@@ -217,6 +223,28 @@ class MainActivity : Activity() {
         }.start()
     }
 
+    /** Lista de las importadas para marcar las que se quitan. */
+    private fun removeImported() {
+        val imported = PetLibrary.all(this).filter { !it.bundled }
+        if (imported.isEmpty()) return
+        val checked = BooleanArray(imported.size)
+        AlertDialog.Builder(this).setTitle("Quitar mascotas importadas")
+            .setMultiChoiceItems(imported.map { it.name }.toTypedArray(), checked) { _, i, on -> checked[i] = on }
+            .setPositiveButton("Quitar") { _, _ -> delete(imported.filterIndexed { i, _ -> checked[i] }.map { it.id }) }
+            .setNegativeButton("Cancelar", null).show()
+    }
+
+    private fun delete(ids: List<String>) {
+        for (id in ids) {
+            PetLibrary.delete(this, id)
+            PetService.forget(this, id)  // también se va de la pantalla
+        }
+        if (pet in ids) { pet = PetLibrary.BUNDLED.first(); save() }
+        fillGrid()
+        refresh()
+        if (ids.isNotEmpty()) Toast.makeText(this, if (ids.size == 1) "Mascota quitada" else "${ids.size} mascotas quitadas", Toast.LENGTH_SHORT).show()
+    }
+
     private fun pickXml() {
         val i = Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*")
             .putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("text/xml", "application/xml", "text/plain", "application/octet-stream"))
@@ -235,12 +263,16 @@ class MainActivity : Activity() {
                 contentResolver.openInputStream(uri)!!.use { PetLibrary.import(this, it) }
             }
             runOnUiThread {
-                result.onSuccess { e ->
+                result.onSuccess { r ->
+                    val e = r.entry
+                    // Si reemplazó a una que estaba en pantalla, que use la versión nueva
+                    if (r.replaced) PetService.forget(this, e.id)
                     pet = e.id
                     save()
                     fillGrid()
                     refresh()
-                    Toast.makeText(this, "¡${e.name} está lista para soltar!", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, if (r.replaced) "${e.name} se actualizó (ya la tenías)" else "¡${e.name} está lista para soltar!",
+                        Toast.LENGTH_LONG).show()
                 }.onFailure { err ->
                     AlertDialog.Builder(this).setTitle("No se pudo importar")
                         .setMessage(err.message ?: err.toString()).setPositiveButton("Vale", null).show()
@@ -274,12 +306,7 @@ class MainActivity : Activity() {
             if (!e.bundled) setOnLongClickListener {
                 AlertDialog.Builder(this@MainActivity).setTitle("¿Quitar ${e.name}?")
                     .setMessage("Se borra la mascota importada de este teléfono.")
-                    .setPositiveButton("Quitar") { _, _ ->
-                        PetLibrary.delete(this@MainActivity, folder)
-                        if (pet == folder) { pet = PetLibrary.BUNDLED.first(); save() }
-                        fillGrid()
-                        refresh()
-                    }
+                    .setPositiveButton("Quitar") { _, _ -> delete(listOf(folder)) }
                     .setNegativeButton("Cancelar", null).show()
                 true
             }

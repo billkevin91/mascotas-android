@@ -11,6 +11,9 @@ import java.io.InputStream
 /** Una mascota que se puede soltar: [id] es la carpeta de assets o "user:<carpeta>". */
 class PetEntry(val id: String, val name: String, val bundled: Boolean)
 
+/** Resultado de importar: [replaced] si ya había una importada con ese nombre y se actualizó. */
+class ImportResult(val entry: PetEntry, val replaced: Boolean)
+
 /**
  * Todas las mascotas: las que vienen con la app (assets/pets) y las importadas por ti
  * (archivos animations.xml de desktopPet guardados en el teléfono). El editor guardará aquí.
@@ -55,7 +58,7 @@ object PetLibrary {
      * Importa un animations.xml (de desktopPet, de su PetEditor o de esheep.petrucci.ch).
      * Lanza una excepción con un mensaje legible si el archivo no sirve.
      */
-    fun import(context: Context, input: InputStream): PetEntry {
+    fun import(context: Context, input: InputStream): ImportResult {
         // eSheep y gSheep llevan los mismos arreglos que las incluidas (la tina, el baño)
         val bytes = PetCompat.patch(input.readBytes().toString(Charsets.UTF_8)).toByteArray(Charsets.UTF_8)
         val def = try {
@@ -68,7 +71,9 @@ object PetLibrary {
         requireNotNull(sheet) { "No se pudo leer la imagen de la mascota" }
         require(sheet.width >= def.tilesX && sheet.height >= def.tilesY) { "La imagen es más pequeña que su cuadrícula de dibujos" }
         val name = def.header.petName.ifEmpty { def.title }.trim().ifEmpty { "Mascota" }
-        return save(context, null, name, bytes, def, sheet)
+        // Si ya hay una importada con el mismo nombre, se reemplaza (no se duplica)
+        val existing = all(context).firstOrNull { !it.bundled && it.name.equals(name, ignoreCase = true) }
+        return ImportResult(save(context, existing?.id, name, bytes, def, sheet), existing != null)
     }
 
     /** Guarda una mascota tuya (nueva si [id] es null). El editor usará esto. */
