@@ -68,6 +68,11 @@ Corazón con audífonos: saludo militar, baila, saluda, salta, gira como una mon
 **Descargar:** [animations.xml](https://raw.githubusercontent.com/billkevin91/mascotas-android/main/extras/corazon/animations.xml) (clic derecho → Guardar enlace como…) ·
 [más detalles](extras/corazon/README.md)
 
+## Publicar una versión nueva
+
+Sube `versionName` (y `versionCode`) en [`app/build.gradle.kts`](app/build.gradle.kts) y llévalo a `main`:
+GitHub prueba la app, la compila y crea sola la versión en Releases con el APK.
+
 ## Cambios
 
 Ver [`CHANGELOG.md`](CHANGELOG.md).
