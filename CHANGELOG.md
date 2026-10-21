@@ -2,7 +2,7 @@
 
 Todos los cambios de la app, del más nuevo al más antiguo.
 
-## [Sin publicar] — versión 1.0 en desarrollo
+## 1.0 — 2026-10-21
 
 ### Añadido
 - **Editor de mascotas** (botón "Editar mascotas"): elige un movimiento y cambia sus dibujos tocando la

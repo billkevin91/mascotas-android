@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   apk:
     runs-on: ubuntu-latest
@@ -35,6 +38,17 @@ jobs:
         with:
           name: mascotas-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+
+      # Al subir una etiqueta de versión (v1.0, v1.1...) se publica el APK en Releases
+      - name: Publicar en Releases
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk "mascotas-en-pantalla-$TAG.apk"
+          gh release create "$TAG" "mascotas-en-pantalla-$TAG.apk" \
+            --title "Mascotas en pantalla $TAG" --notes-file .github/release-notes.md
 
   prueba:
     needs: apk

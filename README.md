@@ -37,8 +37,8 @@ Es un port a Kotlin del motor de [desktopPet](https://github.com/Adrianotiger/de
 
 ## Instalarla
 
-1. En GitHub: **Actions** → **APK Mascotas** → última ejecución → **Artifacts** → `mascotas-apk`.
-2. Descomprime el `.zip` e instala `app-debug.apk` (Android pedirá permitir apps de origen desconocido).
+1. Descarga el `.apk` de la última versión en [**Releases**](https://github.com/billkevin91/mascotas-android/releases/latest).
+2. Instálalo (Android pedirá permitir apps de origen desconocido).
 3. Abre la app, pulsa **Dar permiso para mostrarse sobre otras apps**, activa el permiso,
    vuelve y pulsa **Soltar en la pantalla**.
 
