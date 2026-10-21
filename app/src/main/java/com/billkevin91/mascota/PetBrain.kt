@@ -101,6 +101,7 @@ class PetBrain(
     fun tick(): Int {
         if (finished) return 1000
         if (step < 0) step = 0
+        sceneSteps++
         nextStep()
         step++
         val ms = windowsTimer(interval)
@@ -182,9 +183,10 @@ class PetBrain(
     private var sawInside = false
 
     /** Empieza una escena de prueba donde se pueda ver. */
-    private fun startScene(id: Int) {
+    private fun startScene(id: Int, recenter: Boolean = false) {
         val a = def.animations[id] ?: return
         restarts++
+        sceneSteps = 0
         sawInside = false
         offsetY = 0.0
         val s = def.spawnFor(id)
@@ -195,10 +197,17 @@ class PetBrain(
             val sx = value(s.x)
             x = (if (movingLeft) sx else area.screenW - sx - frameW).toDouble()
         } else {
+            // Si chocó con un borde, desde el centro para que se vea el movimiento entero
+            if (recenter) toCenter()
             placeFor(a)
         }
         setAnimation(id)
     }
+
+    /** Pasos desde que empezó la escena de prueba (para no reiniciar sin parar). */
+    private var sceneSteps = 0
+    /** El último reinicio fue nada más empezar (pegada a un borde). */
+    private var earlyRestart = false
 
     /**
      * Dónde empezar un movimiento de prueba para que tenga sentido: los de suelo en el suelo,
@@ -206,13 +215,13 @@ class PetBrain(
      */
     private fun placeFor(a: Animation) {
         if (isOutside(partly = true)) toCenter()
-        val sx = a.start.x.constant ?: 0.0
-        val ex = a.end.x.constant ?: 0.0
         val sy = a.start.y.constant ?: 0.0
         val ey = a.end.y.constant ?: 0.0
         val name = a.name.lowercase()
         val floor = (area.bottom - frameH).toDouble()
-        val wall = sx == 0.0 && ex == 0.0 && (sy != 0.0 || ey != 0.0) && "fall" !in name && "jump" !in name
+        // De pared sólo si no se mueve nada hacia los lados (una fórmula como random/20-5 sí se mueve)
+        val wall = a.start.x.constant == 0.0 && a.end.x.constant == 0.0 && (sy != 0.0 || ey != 0.0) &&
+            "fall" !in name && "jump" !in name
         when {
             "top" in name -> y = area.top.toDouble()
             wall -> {
@@ -446,9 +455,11 @@ class PetBrain(
                 return
             } else if (loopId > 0 && nextAnimation !in scene) {
                 // Terminó la escena que se está probando: otra vez desde el principio
+                // (desde el centro si quedó pegada a la pared hacia la que mira)
                 x += dx
                 y += dy
-                startScene(loopId)
+                val nearWall = if (movingLeft) x - area.left < frameW / 2.0 else area.right - (x + frameW) < frameW / 2.0
+                startScene(loopId, recenter = nearWall)
                 return
             } else if (nextAnimation >= 0) {
                 next = nextAnimation
@@ -470,6 +481,14 @@ class PetBrain(
 
         x += dx
         y += dy
+        if (newAnimation && loopId > 0 && next !in scene && (sceneSteps > 2 || !earlyRestart)) {
+            // Repitiendo: un borde o el vacío la llevarían a otro movimiento (idle, caer...)
+            // que no es el que se está probando; vuelve a empezar el elegido desde el centro.
+            // Si vuelve a pasar nada más empezar, se deja seguir para no reiniciar sin parar.
+            earlyRestart = sceneSteps <= 2
+            startScene(loopId, recenter = true)
+            return
+        }
         if (newAnimation) setAnimation(next)
     }
 
