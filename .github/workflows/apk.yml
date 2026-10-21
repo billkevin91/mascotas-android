@@ -3,6 +3,8 @@ name: APK Mascotas
 on:
   push:
   workflow_dispatch:
+  release:
+    types: [published]
 
 permissions:
   contents: write
@@ -39,16 +41,15 @@ jobs:
           name: mascotas-apk
           path: app/build/outputs/apk/debug/app-debug.apk
 
-      # Al subir una etiqueta de versión (v1.0, v1.1...) se publica el APK en Releases
-      - name: Publicar en Releases
-        if: startsWith(github.ref, 'refs/tags/v')
+      # Al publicar una versión en Releases (v1.0, v1.1...) se le adjunta el APK
+      - name: Adjuntar el APK a la versión
+        if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ github.event.release.tag_name }}
         run: |
           cp app/build/outputs/apk/debug/app-debug.apk "mascotas-en-pantalla-$TAG.apk"
-          gh release create "$TAG" "mascotas-en-pantalla-$TAG.apk" \
-            --title "Mascotas en pantalla $TAG" --notes-file .github/release-notes.md
+          gh release upload "$TAG" "mascotas-en-pantalla-$TAG.apk" --clobber
 
   prueba:
     needs: apk
