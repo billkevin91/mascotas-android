@@ -43,6 +43,7 @@ class PetService : Service() {
         const val ACTION_TEST_END = "com.billkevin91.mascota.TEST_END"
         const val ACTION_TEST_CLEAR = "com.billkevin91.mascota.TEST_CLEAR"
         const val ACTION_FORGET = "com.billkevin91.mascota.FORGET"
+        const val ACTION_SOUND = "com.billkevin91.mascota.SOUND"
         const val EXTRA_PET = "pet"
         const val EXTRA_SIZE = "size"
         const val EXTRA_ANIMATION = "animation"
@@ -119,8 +120,11 @@ class PetService : Service() {
         speed = prefs.getFloat(MainActivity.PREF_SPEED, 1f).toDouble()
         testSpeed = prefs.getFloat(MainActivity.PREF_TEST_SPEED, 1f).toDouble()
         showNames = prefs.getBoolean(MainActivity.PREF_NAMES, false)
+        val wasOn = soundOn
         soundOn = prefs.getBoolean(MainActivity.PREF_SOUND, false)
         if (!soundOn && ::sounds.isInitialized) sounds.stopAll()
+        // El botón de la notificación dice si el sonido está encendido
+        if (wasOn != soundOn && ::wm.isInitialized) startInForeground()
         for (p in pets) {
             p.brain.speed = if (p.test) testSpeed else speed
             p.refreshLabel()
@@ -142,6 +146,13 @@ class PetService : Service() {
             }
             ACTION_TEST_END -> {
                 exitTest()
+                if (pets.isEmpty()) stopSelf()
+                return START_STICKY
+            }
+            ACTION_SOUND -> {
+                // Botón de la notificación: encender o apagar los sonidos
+                val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
+                prefs.edit().putBoolean(MainActivity.PREF_SOUND, !prefs.getBoolean(MainActivity.PREF_SOUND, false)).apply()
                 if (pets.isEmpty()) stopSelf()
                 return START_STICKY
             }
@@ -227,6 +238,7 @@ class PetService : Service() {
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), flags)
         val more = PendingIntent.getService(this, 1, Intent(this, PetService::class.java).setAction(ACTION_ADD), flags)
         val clear = PendingIntent.getService(this, 2, Intent(this, PetService::class.java).setAction(ACTION_CLEAR), flags)
+        val sound = PendingIntent.getService(this, 3, Intent(this, PetService::class.java).setAction(ACTION_SOUND), flags)
         @Suppress("DEPRECATION")
         val builder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(this, CHANNEL) else Notification.Builder(this)
         val n = builder
@@ -237,6 +249,7 @@ class PetService : Service() {
             .setOngoing(true)
             .addAction(Notification.Action.Builder(null as Icon?, "Otra más", more).build())
             .addAction(Notification.Action.Builder(null as Icon?, "Quitar todas", clear).build())
+            .addAction(Notification.Action.Builder(null as Icon?, if (soundOn) "🔊 Sonido: sí" else "🔇 Sonido: no", sound).build())
             .build()
         if (Build.VERSION.SDK_INT >= 34) {
             startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)

@@ -5,6 +5,12 @@ Todos los cambios de la app, del más nuevo al más antiguo.
 ## [Sin publicar] — versión 1.0 en desarrollo
 
 ### Añadido
+- **Editor de mascotas** (botón "Editar mascotas"): elige un movimiento y cambia sus dibujos tocando la
+  hoja, la velocidad, el avance y las repeticiones; "Guardar y probar" lo muestra al momento. Las
+  mascotas incluidas se guardan como copia "(mía)"; también se puede cambiar el nombre.
+- **Sonido desde la notificación**: botón para encenderlo o apagarlo sin abrir la app.
+- **Licencia MIT** para el código de la app ([`LICENSE`](LICENSE)).
+- **Carro rojo y corazón para descargar**: apartado en el README con su demo y el enlace al XML.
 - **Sonidos de las mascotas** (casilla en la pantalla principal, apagados de serie): suenan los que
   traen las ovejas de colores y los zorritos, como en desktopPet.
 - **Quitar mascotas importadas**: botón con una lista para marcar las que se borran (también se van
@@ -23,7 +29,7 @@ Todos los cambios de la app, del más nuevo al más antiguo.
   funcionan; a eSheep y a las gSheep se les aplican los arreglos del baño. Mantener pulsada una
   importada para quitarla.
 - **Guardar mascotas en XML** sin perder nada (cabecera, icono, sonidos): base para el editor.
-- **Pruebas automáticas** del motor (22) que GitHub ejecuta antes de compilar el APK.
+- **Pruebas automáticas** del motor (24) que GitHub ejecuta antes de compilar el APK.
 - **Probar movimientos**: lista de todos los movimientos con buscador, repetir, nombre del movimiento
   encima de la mascota, y escenas enteras (como el baño) al tocar una de sus partes.
 - **Velocidad**: Lenta, Tranquila, Normal o Rápida.

@@ -69,6 +69,7 @@ class MainActivity : Activity() {
     private val sizeButtons = ArrayList<Pair<Float, Button>>()
     private lateinit var grid: LinearLayout
     private lateinit var removeButton: Button
+    private lateinit var soundBox: android.widget.CheckBox
     private var pet = PetLibrary.BUNDLED.first()
     private var size = 1f
 
@@ -125,7 +126,8 @@ class MainActivity : Activity() {
 
         col.addView(title("Velocidad"))
         col.addView(speedRow(this))
-        col.addView(android.widget.CheckBox(this).apply {
+        soundBox = android.widget.CheckBox(this)
+        col.addView(soundBox.apply {
             text = "Sonidos de las mascotas (algunas traen: las ovejas de colores, los zorritos...)"
             isChecked = prefs.getBoolean(PREF_SOUND, false)
             setOnCheckedChangeListener { _, on -> prefs.edit().putBoolean(PREF_SOUND, on).apply() }
@@ -141,6 +143,7 @@ class MainActivity : Activity() {
         col.addView(View(this), LinearLayout.LayoutParams(1, dp(8)))
         col.addView(button("Quitar todas") { PetService.clear(this) })
         col.addView(button("Probar movimientos") { startActivity(Intent(this, TestActivity::class.java)) })
+        col.addView(button("Editar mascotas") { startActivity(Intent(this, EditorActivity::class.java)) })
 
         col.addView(text("Mascotas del proyecto desktopPet de Adriano Petrucci y su comunidad " +
             "(github.com/Adrianotiger/desktopPet, licencia MIT).").apply { textSize = 12f; alpha = 0.6f; setPadding(0, dp(24), 0, 0) })
@@ -186,6 +189,8 @@ class MainActivity : Activity() {
     }
 
     private fun refresh() {
+        // También se enciende o apaga desde la notificación
+        soundBox.isChecked = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(PREF_SOUND, false)
         val ok = Settings.canDrawOverlays(this)
         permission.text = if (ok) "✔ Permiso concedido" else "Para andar por tu pantalla, la app necesita el permiso \"Mostrar sobre otras apps\"."
         grant.visibility = if (ok) View.GONE else View.VISIBLE

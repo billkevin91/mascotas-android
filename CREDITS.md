@@ -3,6 +3,7 @@
 ## La app
 
 **Mascotas en pantalla**, app Android de [billkevin91](https://github.com/billkevin91).
+Código bajo licencia [MIT](LICENSE) (© 2026 billkevin91).
 
 ## Motor de movimientos
 
@@ -24,7 +25,7 @@ Copiadas de la carpeta [Pets](https://github.com/Adrianotiger/desktopPet/tree/ma
 | Mascota | Animaciones (XML) | Dibujos | Notas |
 | --- | --- | --- | --- |
 | eSheep (`esheep64`) | Adriano Petrucci; choques y lanzamiento: Zecheriah | Extraídos por **LiL_Stenly** ([spritedatabase.net](http://spritedatabase.net/game/2071)) del eSheep original de 1995 | Autor del eSheep original sin confirmar (se le asocia con *Stray Sheep*) |
-| Oveja azul (`blue_sheep`, "Ben") | **Oliver B.** (gSheep 8.0) | Basados en eSheep | Incluye sonidos (la app aún no los reproduce) |
+| Oveja azul (`blue_sheep`, "Ben") | **Oliver B.** (gSheep 8.0) | Basados en eSheep | Incluye sonidos |
 | Oveja rosa (`pink_sheep`, "Pearl") | **Oliver B.** (gSheep 8.0) | Basados en eSheep | Incluye sonidos |
 | Neko (`neko`) | Adriano Petrucci | De [webneko.net](https://webneko.net/) | El Neko original lo creó Naoshi Watanabe en los años 80 |
 | Neko rosa (`pink_neko`) | **Michelle!** | Neko de webneko.net, recoloreado | |
@@ -49,12 +50,11 @@ Esto no es asesoría legal, pero conviene saberlo:
   los de eSheep (y las gSheep, basadas en ellos) se extrajeron de un programa de 1995 de otro autor,
   y los de Neko vienen de webneko.net. MIT no puede dar permiso sobre obras de terceros, así que
   sus derechos no están claros. Lo mismo pasa con los sonidos de las gSheep, cuyo origen no consta.
-- Los **zorritos** son dibujos originales de su autora, publicados en desktopPet, y el **carro rojo**
-  (en `extras/carro_rojo`, para importar) es dibujo propio: son la opción más segura, junto con las
+- Los **zorritos** son dibujos originales de su autora, publicados en desktopPet, y el **carro rojo** y el **corazón**
+  (en `extras/`, para importar) son dibujos propios: son la opción más segura, junto con las
   mascotas que dibujes tú.
 - El **icono de la app** sale de eSheep: para publicar es mejor uno propio.
 - El propio autor de desktopPet publica su app Android con eSheep en Google Play, pero eso no
   garantiza que otra app pueda hacerlo.
-- Tu código (lo que no viene de desktopPet) todavía **no tiene licencia** en el repositorio:
-  sin licencia, nadie más puede reutilizarlo legalmente. Si quieres que sea libre, MIT es la opción
-  más sencilla y compatible con desktopPet.
+- El código de esta app es MIT ([`LICENSE`](LICENSE)); esa licencia no cubre los dibujos ni los
+  sonidos de terceros.
