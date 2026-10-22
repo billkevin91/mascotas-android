@@ -446,7 +446,7 @@ class PetService : Service() {
                 val animBefore = brain.animationId
                 val restartsBefore = brain.restarts
                 val delay = brain.tick()
-                if (soundOn) for (id in brain.takeStarted()) sounds.started(folder, brain.def, id) else brain.takeStarted()
+                if (soundOn) for (id in brain.takeStarted()) sounds.started(folder, brain.def, id, always = test) else brain.takeStarted()
                 if (brain.restarts != restartsBefore) {
                     // Modo prueba: empieza de nuevo, las crías de la vuelta anterior sobran
                     pets.filter { it.parent === this@PetWindow }.forEach { it.dismiss() }

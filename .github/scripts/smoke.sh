@@ -11,12 +11,18 @@ fail=0
 adb shell am start -W -n $PKG/.MainActivity
 sleep 4
 adb exec-out screencap -p > shots/menu.png
-adb shell am start -S -W -n $PKG/.MainActivity --es soltar esheep64,blue_sheep,neko,fox --es mover esheep64:47,blue_sheep:215 --ez nombres true
+adb shell am start -S -W -n $PKG/.MainActivity --es soltar esheep64,blue_sheep,neko,fox --es mover esheep64:47,blue_sheep:61 --ez nombres true --ez sonido true
 adb shell input keyevent KEYCODE_HOME
 for i in 1 2 3 4 5 6; do
   sleep 5
   adb exec-out screencap -p > shots/paseo$i.png
 done
+# Sonido: la oveja azul de prueba estornuda en bucle; Android tiene que haber reproducido algo de la app
+uid=$(adb shell pm list packages -U $PKG | sed 's/.*uid://' | tr -d '\r')
+adb shell dumpsys audio > shots/audio.txt
+sonidos=$(grep "$uid" shots/audio.txt | grep -c -i "started")
+echo "::notice title=Sonido::$sonidos reproducciones de la app (uid $uid) en el registro de audio"
+if [ "$sonidos" -lt 1 ]; then echo "::error::La app no reprodujo ningún sonido"; fail=1; fi
 # Arrastrar y lanzar por la parte de abajo, donde caminan
 read -r W H < <(adb shell wm size | tail -1 | sed 's/.*: //; s/x/ /')
 for x in $(seq $((W / 8)) $((W / 8)) $((W - W / 8))); do
@@ -29,7 +35,7 @@ if ! adb shell pidof $PKG > /dev/null; then
   fail=1
 fi
 # Batería: tiempo de CPU de la app en 30 s con la pantalla encendida y en 30 s apagada
-adb shell am start -S -W -n $PKG/.MainActivity --es soltar esheep64,blue_sheep,neko,fox
+adb shell am start -S -W -n $PKG/.MainActivity --es soltar esheep64,blue_sheep,neko,fox --ez sonido false
 adb shell input keyevent KEYCODE_HOME
 sleep 5
 cpu() { adb shell cat /proc/$(adb shell pidof $PKG | tr -d '\r')/stat | awk '{print $14 + $15}'; }

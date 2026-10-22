@@ -102,7 +102,7 @@ class TestActivity : Activity() {
         col.addView(buttons)
 
         search = EditText(this).apply {
-            hint = "Buscar (walk, run, bath, sleep...)"
+            hint = "Buscar (walk, bath, sleep, sonido...)"
             isSingleLine = true
             addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -161,6 +161,8 @@ class TestActivity : Activity() {
                     a.end.x.constant == 0.0 && a.end.y.constant == 0.0
                 if (a.id == def.kill) parts.add(0, "despedida: se desvanece")
                 else if (still) parts.add(0, "pose quieta")
+                // Aquí el sonido suena siempre (si está encendido); paseando, con su probabilidad
+                def.sounds.firstOrNull { it.animationId == a.id }?.let { parts.add(0, "🔊 sonido (${it.probability} % paseando)") }
                 val start = def.sceneStart(a.id)
                 val scene = def.scene(start)
                 when {
@@ -184,6 +186,6 @@ class TestActivity : Activity() {
     private fun filter() {
         val q = search.text.toString().trim().lowercase()
         adapter.clear()
-        adapter.addAll(if (q.isEmpty()) moves else moves.filter { it.name.lowercase().contains(q) || it.id.toString() == q })
+        adapter.addAll(if (q.isEmpty()) moves else moves.filter { it.name.lowercase().contains(q) || it.detail.lowercase().contains(q) || it.id.toString() == q })
     }
 }

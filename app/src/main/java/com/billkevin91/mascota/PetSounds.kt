@@ -16,10 +16,13 @@ class PetSounds(private val context: Context) {
     private val playing = ArrayList<MediaPlayer>()
     private val files = HashMap<String, File?>()
 
-    /** [pet] identifica la mascota (para la caché); [animationId] es el movimiento que empezó. */
-    fun started(pet: String, def: PetDef, animationId: Int) {
+    /**
+     * [pet] identifica la mascota (para la caché); [animationId] es el movimiento que empezó.
+     * Con [always] (modo prueba) suena sin mirar la probabilidad, para poder oírlo.
+     */
+    fun started(pet: String, def: PetDef, animationId: Int, always: Boolean = false) {
         val sound = def.sounds.firstOrNull { it.animationId == animationId } ?: return
-        if (Random.nextInt(100) >= sound.probability) return
+        if (!always && Random.nextInt(100) >= sound.probability) return
         if (playing.size >= MAX_AT_ONCE) return
         val file = files.getOrPut("$pet/$animationId") { save(pet, sound) } ?: return
         runCatching {

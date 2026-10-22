@@ -165,6 +165,7 @@ class MainActivity : Activity() {
             test.split(',').filter { PetLibrary.exists(this, it) }.forEach { PetService.add(this, it, size) }
             // ... --es mover esheep64:7 --ez nombres true (modo prueba)
             if (intent.hasExtra("nombres")) prefs.edit().putBoolean(PREF_NAMES, intent.getBooleanExtra("nombres", false)).apply()
+            if (intent.hasExtra("sonido")) prefs.edit().putBoolean(PREF_SOUND, intent.getBooleanExtra("sonido", false)).apply()
             intent.getStringExtra("mover")?.split(',')?.forEach { m ->
                 val (p, id) = m.split(':').let { it[0] to (it.getOrNull(1)?.toIntOrNull() ?: -1) }
                 if (PetLibrary.exists(this, p)) PetService.play(this, p, id, true)
