@@ -2,6 +2,13 @@
 
 Todos los cambios de la app, del más nuevo al más antiguo.
 
+## 1.1.2 — 2026-10-22
+
+### Mejorado
+- **Sonidos más fáciles de probar**: en "Probar movimientos" los que tienen sonido llevan 🔊 (busca
+  "sonido") y ahí suenan siempre. Paseando suenan con la probabilidad del XML, como en desktopPet.
+- La prueba automática comprueba que Android reproduce el sonido de la app.
+
 ## 1.1.1 — 2026-10-21
 
 ### Corregido
