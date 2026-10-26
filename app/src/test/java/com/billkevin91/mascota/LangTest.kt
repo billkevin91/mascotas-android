@@ -11,8 +11,8 @@ class LangTest {
 
     @Test
     fun eligeElIdiomaDelTelefono() {
-        Lang.init(Locale("es", "MX")); assertEquals(false, Lang.english)
-        Lang.init(Locale("es", "GT")); assertEquals(false, Lang.english)
+        Lang.init(Locale.forLanguageTag("es-MX")); assertEquals(false, Lang.english)
+        Lang.init(Locale.forLanguageTag("es-GT")); assertEquals(false, Lang.english)
         Lang.init(Locale.US); assertEquals(true, Lang.english)
         Lang.init(Locale.FRANCE); assertEquals("Los demás idiomas, en inglés", true, Lang.english)
     }

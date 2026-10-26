@@ -16,7 +16,7 @@ class ImportResult(val entry: PetEntry, val replaced: Boolean)
 
 /**
  * Todas las mascotas: las que vienen con la app (assets/pets) y las importadas por ti
- * (archivos animations.xml de desktopPet guardados en el teléfono). El editor guardará aquí.
+ * y las creadas desde un dibujo o editadas (archivos animations.xml guardados en el teléfono).
  */
 object PetLibrary {
     /** Carpetas en assets/pets (mascotas de desktopPet). */
@@ -76,7 +76,7 @@ object PetLibrary {
         return ImportResult(save(context, existing?.id, name, bytes, def, sheet), existing != null)
     }
 
-    /** Guarda una mascota tuya (nueva si [id] es null). El editor usará esto. */
+    /** Guarda una mascota tuya (nueva si [id] es null): la usan el editor y el creador desde un dibujo. */
     fun save(context: Context, id: String?, def: PetDef): PetEntry {
         val name = def.header.petName.ifEmpty { def.title }.trim().ifEmpty { "Mascota" }
         return save(context, id, name, PetXml.write(def).toByteArray(), def, sheet(def))

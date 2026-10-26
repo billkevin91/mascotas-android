@@ -2,6 +2,24 @@
 
 Todos los cambios de la app, del más nuevo al más antiguo.
 
+## [Sin publicar]
+
+### Añadido
+- **Compartir mascotas**: "Compartir" (WhatsApp, correo...) y "Guardar como archivo" su
+  `animations.xml`, desde el editor o manteniendo pulsada una mascota en la pantalla principal.
+  Sirve para importarla en otro teléfono o usarla en desktopPet de Windows.
+- **Ajustes** (botón ⚙): máximo de mascotas a la vez, volumen de los sonidos y **ocultarlas en
+  juegos y vídeos a pantalla completa** (vuelven solas al salir). Aquí están también ahora el ahorro
+  de batería, las reacciones al teléfono y lo de la hora.
+- **Inglés**: en los teléfonos que no están en español, la app sale en inglés (pantallas, avisos,
+  notificación, widget, atajos y créditos).
+- Pruebas: idioma (LangTest); en el emulador, compartir, ocultarse a pantalla completa y que la
+  pantalla principal salga en inglés.
+
+### Mejorado
+- Código depurado: órdenes de la prueba automática juntas en un solo sitio, comentarios al día,
+  sin código repetido en las pruebas.
+
 ## 1.5.1 — 2026-10-26
 
 ### Quitado

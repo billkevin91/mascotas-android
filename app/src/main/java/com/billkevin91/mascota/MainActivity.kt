@@ -172,9 +172,23 @@ class MainActivity : Activity() {
         // Android 15 dibuja detrás de las barras: deja espacio para ellas
         setContentView(ScrollView(this).apply { fitsSystemWindows = true; addView(col) })
 
-        // Prueba automática de compartir: --es compartir esheep64
-        intent.getStringExtra("compartir")?.let { runCatching { PetShare.share(this, it) }; return }
-        // Prueba automática de "ocultarlas a pantalla completa": --ez pantalla_completa true
+        if (testHook()) return
+        if (Build.VERSION.SDK_INT >= 33) requestPermissions(arrayOf("android.permission.POST_NOTIFICATIONS"), 1)
+    }
+
+    /**
+     * Órdenes de la prueba automática del emulador (.github/scripts/smoke.sh), con
+     * `adb shell am start -n com.billkevin91.mascota/.MainActivity` y alguno de estos extras:
+     * - `--es soltar esheep64,neko` suelta esas mascotas; con `--es mover esheep64:7` les hace
+     *   repetir ese movimiento (modo prueba); `--ez nombres true`, `--ez sonido true` los activan.
+     * - `--ez crear_prueba true` crea una mascota desde un dibujo de ejemplo y la suelta.
+     * - `--es compartir esheep64` abre el menú de compartir esa mascota.
+     * - `--ez pantalla_completa true` oculta las barras (para probar que ellas se ocultan).
+     * Devuelve si había alguna orden (y entonces no se pide el permiso de notificaciones).
+     */
+    private fun testHook(): Boolean {
+        val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
+        intent.getStringExtra("compartir")?.let { runCatching { PetShare.share(this, it) }; return true }
         if (intent.getBooleanExtra("pantalla_completa", false)) {
             if (Build.VERSION.SDK_INT >= 30) {
                 window.insetsController?.hide(android.view.WindowInsets.Type.statusBars() or android.view.WindowInsets.Type.navigationBars())
@@ -183,34 +197,28 @@ class MainActivity : Activity() {
                 window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
                     View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
             }
-            return
+            return true
         }
-
-        // Para la prueba automática: adb shell am start ... --es soltar esheep64,neko
-        // Prueba automática del creador: adb shell am start ... --ez crear_prueba true
-        if (intent.getBooleanExtra("crear_prueba", false) && Settings.canDrawOverlays(this)) {
+        if (!Settings.canDrawOverlays(this)) return false
+        if (intent.getBooleanExtra("crear_prueba", false)) {
             Thread {
-                val made = runCatching { MakerActivity.create(this, Drawing.demo(), "Dibujo de prueba", 1, 1, removeBg = true, facingRight = false) }
-                made.onSuccess {
-                    android.util.Log.i("Mascotas", "creada: ${it.id}")
-                    PetService.add(this, it.id, size)
-                }.onFailure { android.util.Log.e("Mascotas", "crear: no se pudo", it) }
+                runCatching { MakerActivity.create(this, Drawing.demo(), "Dibujo de prueba", 1, 1, removeBg = true, facingRight = false) }
+                    .onSuccess {
+                        android.util.Log.i("Mascotas", "creada: ${it.id}")
+                        PetService.add(this, it.id, size)
+                    }.onFailure { android.util.Log.e("Mascotas", "crear: no se pudo", it) }
             }.start()
-            return
+            return true
         }
-        val test = intent.getStringExtra("soltar")
-        if (test != null && Settings.canDrawOverlays(this)) {
-            test.split(',').filter { PetLibrary.exists(this, it) }.forEach { PetService.add(this, it, size) }
-            // ... --es mover esheep64:7 --ez nombres true (modo prueba)
-            if (intent.hasExtra("nombres")) prefs.edit().putBoolean(PREF_NAMES, intent.getBooleanExtra("nombres", false)).apply()
-            if (intent.hasExtra("sonido")) prefs.edit().putBoolean(PREF_SOUND, intent.getBooleanExtra("sonido", false)).apply()
-            intent.getStringExtra("mover")?.split(',')?.forEach { m ->
-                val (p, id) = m.split(':').let { it[0] to (it.getOrNull(1)?.toIntOrNull() ?: -1) }
-                if (PetLibrary.exists(this, p)) PetService.play(this, p, id, true)
-            }
-            return
+        val release = intent.getStringExtra("soltar") ?: return false
+        release.split(',').filter { PetLibrary.exists(this, it) }.forEach { PetService.add(this, it, size) }
+        if (intent.hasExtra("nombres")) prefs.edit().putBoolean(PREF_NAMES, intent.getBooleanExtra("nombres", false)).apply()
+        if (intent.hasExtra("sonido")) prefs.edit().putBoolean(PREF_SOUND, intent.getBooleanExtra("sonido", false)).apply()
+        intent.getStringExtra("mover")?.split(',')?.forEach { m ->
+            val (p, id) = m.split(':').let { it[0] to (it.getOrNull(1)?.toIntOrNull() ?: -1) }
+            if (PetLibrary.exists(this, p)) PetService.play(this, p, id, true)
         }
-        if (Build.VERSION.SDK_INT >= 33) requestPermissions(arrayOf("android.permission.POST_NOTIFICATIONS"), 1)
+        return true
     }
 
     override fun onResume() {

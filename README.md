@@ -21,6 +21,9 @@ Es un port a Kotlin del motor de [desktopPet](https://github.com/Adrianotiger/de
 - **Sonidos** (si la mascota los trae): se encienden y apagan en la pantalla principal o en la notificación.
 - **Reaccionan al teléfono**: se alegran al cargarlo y les entra sueño con la batería baja.
 - **Según la hora**: de noche duermen más y por la mañana están más activas (se puede apagar).
+- **Ajustes**: máximo de mascotas, volumen y ocultarlas en juegos y vídeos a pantalla completa.
+- **Compartir**: manda tu mascota (su `animations.xml`) por WhatsApp o guárdala como archivo.
+- **Idiomas**: español e inglés (según el idioma del teléfono).
 - **Batería**: con la pantalla apagada o bloqueada se esperan quietas; el interruptor **Ahorro de batería**
   (o el del teléfono) hace que se muevan a pasos, sin deslizarse.
 - **Crear mascota desde un dibujo**: elige una imagen y la app inventa sus poses y movimientos.
@@ -38,6 +41,9 @@ Es un port a Kotlin del motor de [desktopPet](https://github.com/Adrianotiger/de
 | `PetSounds.kt` | Sonidos de las mascotas |
 | `MakerActivity.kt`, `PetMaker.kt`, `Drawing.kt`, `Pixels.kt` | Crear una mascota desde un dibujo |
 | `MascotasWidget.kt` | Widget de la pantalla de inicio |
+| `SettingsActivity.kt` | Ajustes |
+| `PetShare.kt` | Compartir y guardar el `animations.xml` |
+| `Lang.kt` | Español / inglés (`tr("Guardar", "Save")`) |
 | `PetMoves.kt` | Qué movimientos sirven para caminar, alegrarse y comer |
 | `AccionActivity.kt` | Atajos del icono: dar de comer y otra mascota |
 | `TestActivity.kt` | Modo prueba: lista de movimientos para verlos uno a uno |

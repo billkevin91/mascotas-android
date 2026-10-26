@@ -10,6 +10,12 @@ object Pets {
     val all: List<String> get() = dir.listFiles()!!.filter { it.isDirectory }.map { it.name }.sorted()
     fun def(name: String) = cache.getOrPut(name) { File(dir, "$name/animations.xml").inputStream().use { PetDef.parse(it) } }
     fun id(def: PetDef, name: String) = def.animations.values.first { it.name == name }.id
+
+    /** Las incluidas y las de extras/ (carro rojo, corazón), con su nombre. */
+    val withExtras: List<Pair<String, PetDef>> by lazy {
+        val extras = File("../extras").listFiles().orEmpty().map { File(it, "animations.xml") }.filter { it.isFile }.sortedBy { it.path }
+        all.map { it to def(it) } + extras.map { f -> f.parentFile.name to f.inputStream().use { PetDef.parse(it) } }
+    }
 }
 
 fun portrait() = Area().apply { screenW = 360; screenH = 780; right = 360; bottom = 740 }

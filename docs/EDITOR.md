@@ -28,7 +28,7 @@ Botón **Editar mascotas** (`EditorActivity.kt`, cambios en `PetEdit.kt`, prueba
 
 - **Modelo completo** (`PetDef.kt`): se lee todo el XML, incluidos cabecera, icono y sonidos.
 - **Guardar** (`PetXml.kt`): escribe el XML de nuevo. Una prueba comprueba con las 7 mascotas que leer → guardar → leer no pierde nada.
-- **Biblioteca** (`PetLibrary.kt`): mascotas incluidas + mascotas tuyas guardadas en el teléfono. El editor guardará con `PetLibrary.save`.
+- **Biblioteca** (`PetLibrary.kt`): mascotas incluidas + las tuyas (importadas, editadas o creadas), guardadas con `PetLibrary.save`.
 - **Importar**: botón "Importar mascota (animations.xml)". Las 26 mascotas de desktopPet funcionan (probado). A eSheep y a las gSheep se les aplican los arreglos del baño (`PetCompat.kt`).
 - **Vista previa**: el modo "Probar movimientos" ya muestra cualquier movimiento o escena en pantalla; el editor lo usará para ver los cambios al momento.
 - **Pruebas automáticas** (`app/src/test`): cada cambio en el motor se prueba en GitHub antes de compilar.
@@ -47,7 +47,10 @@ Botón **Editar mascotas** (`EditorActivity.kt`, cambios en `PetEdit.kt`, prueba
   movimientos básicos (`PetMaker`, `MakerTest`); o una hoja en cuadrícula. Quitar fondo y recortar
   en `Pixels` (`PixelsTest`).
 
+## Hecho: compartir
+
+"Compartir" y "Guardar como archivo" en el editor y al mantener pulsada una mascota (`PetShare.kt`).
+
 ## Pendiente
 
 1. **Apariciones**: dónde y cómo entra en pantalla (por ahora, las del XML o las de `PetMaker`).
-2. **Compartir**: exportar el `animations.xml` (sirve también en desktopPet de Windows).

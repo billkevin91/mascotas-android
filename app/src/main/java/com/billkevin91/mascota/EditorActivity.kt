@@ -182,11 +182,7 @@ class EditorActivity : Activity() {
         setContentView(ScrollView(this).apply { fitsSystemWindows = true; addView(col) })
         // Al escribir en cualquier campo hay cambios sin guardar
         for (e in listOf(nameEdit, startMs, endMs, startX, endX, startY, endY, repeat, repeatFrom, author, info)) {
-            e.addTextChangedListener(object : android.text.TextWatcher {
-                override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-                override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-                override fun afterTextChanged(s: android.text.Editable?) { if (!filling) dirty = true }
-            })
+            watch(e) { dirty = true }
         }
     }
 

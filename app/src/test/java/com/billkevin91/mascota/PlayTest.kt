@@ -3,13 +3,10 @@ package com.billkevin91.mascota
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /** Jugar con las mascotas: caricias y comida (las incluidas y las de extras/). */
 class PlayTest {
-    private val extras = File("../extras").listFiles().orEmpty().map { File(it, "animations.xml") }.filter { it.isFile }
-    private val pets: List<Pair<String, PetDef>> =
-        Pets.all.map { it to Pets.def(it) } + extras.map { f -> f.parentFile.name to f.inputStream().use { PetDef.parse(it) } }
+    private val pets = Pets.withExtras
 
     @Test
     fun cadaMascotaSabeJugar() {
