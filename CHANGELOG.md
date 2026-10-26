@@ -2,6 +2,21 @@
 
 Todos los cambios de la app, del más nuevo al más antiguo.
 
+## [Sin publicar]
+
+### Mejorado
+- **Batería**: lo que más gasta no es la app sino Android moviendo las ventanas de las mascotas.
+  Ahora se deslizan de píxel de mascota en píxel de mascota (en pixel art se ve igual) y la app
+  sólo despierta cuando de verdad toca mover la ventana: en el emulador, con 4 mascotas, de 2398 a
+  ~400 movimientos de ventana cada 30 s. Además no se redibujan si el dibujo no cambia.
+- La prueba automática mide también la CPU del sistema, alternando 20 s con las mascotas a la
+  vista y 20 s escondidas, y cuenta movimientos de ventana, dibujos y pasos.
+
+### Añadido
+- **Flores de las ovejas**: con un toque se vuelven comida y la mascota más cercana va a comérsela
+  (también la oveja que la hizo). Con doble toque se quitan. Se marchitan como mucho a los 2 minutos
+  (en desktopPet podían quedarse hasta ~8).
+
 ## 1.6 — 2026-10-26
 
 ### Añadido
