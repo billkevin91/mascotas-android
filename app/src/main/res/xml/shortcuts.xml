@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Atajos al mantener pulsado el icono de la app -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="comer"
+        android:shortcutShortLabel="@string/atajo_comer">
+        <intent
+            android:action="com.billkevin91.mascota.atajo.COMER"
+            android:targetClass="com.billkevin91.mascota.AccionActivity"
+            android:targetPackage="com.billkevin91.mascota" />
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="otra"
+        android:shortcutShortLabel="@string/atajo_otra">
+        <intent
+            android:action="com.billkevin91.mascota.atajo.OTRA"
+            android:targetClass="com.billkevin91.mascota.AccionActivity"
+            android:targetPackage="com.billkevin91.mascota" />
+    </shortcut>
+</shortcuts>

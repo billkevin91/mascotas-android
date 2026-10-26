@@ -2,6 +2,18 @@
 
 Todos los cambios de la app, del más nuevo al más antiguo.
 
+## [Sin publicar]
+
+### Añadido
+- **Caricias**: un toque a una mascota la alegra (baila, saluda, saca la lengua, toca la bocina...
+  según cuál) y le salen corazones. Para arrastrarla, basta con mover el dedo o dejarlo quieto encima.
+- **Dar de comer**: botón en la pantalla principal y atajo en el icono de la app (mantenerlo pulsado).
+  Cae comida, las mascotas van caminando (o corriendo) hasta ella y se la comen. La comida se puede
+  arrastrar para llevarlas donde quieras; doble toque la quita y, si nadie se la come, se va sola.
+- **Atajo "Otra mascota"** en el icono de la app.
+- Pruebas: las mascotas llegan a la comida desde los dos lados (las 9, con varias semillas) y no se
+  congelan al acariciarlas; en el emulador, un toque saca corazones y la comida se la comen.
+
 ## 1.1.2 — 2026-10-22
 
 ### Mejorado

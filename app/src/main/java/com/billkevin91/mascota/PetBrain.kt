@@ -19,6 +19,9 @@ class Area {
     var bottom = 600
 }
 
+/** Adónde ir (la comida): [x] es el centro y [y] el suelo bajo ella, en píxeles de la mascota. */
+class Target(val x: Double, val y: Double)
+
 /** Una mascota hija que hay que crear (salpicaduras, flores, otra oveja...). */
 class ChildRequest(
     val def: ChildDef,
@@ -65,6 +68,12 @@ class PetBrain(
     var loopId = -1
     /** Velocidad general: 0.5 = la mitad de rápido. */
     var speed = 1.0
+    /** Comida a la que ir; el servicio la pone (o la quita) antes de cada paso. */
+    var target: Target? = null
+    /** Movimientos para jugar con ella (caminar, alegrarse, comer). */
+    val moves by lazy { PetMoves(def) }
+    private var arrived = false
+
     /** Sube cada vez que el modo prueba empieza de nuevo un movimiento (las crías anteriores sobran). */
     var restarts = 0
         private set
@@ -104,6 +113,7 @@ class PetBrain(
     /** Avanza un paso. Devuelve los milisegundos hasta el siguiente. */
     fun tick(): Int {
         if (finished) return 1000
+        steer()
         if (step < 0) step = 0
         sceneSteps++
         nextStep()
@@ -119,6 +129,13 @@ class PetBrain(
         val list = ArrayList(startedAnimations)
         startedAnimations.clear()
         return list
+    }
+
+    /** ¿Llegó a la comida desde la última vez? (se la come y el servicio la quita). */
+    fun takeArrived(): Boolean {
+        val a = arrived
+        arrived = false
+        return a
     }
 
     fun takeChildren(): List<ChildRequest> {
@@ -178,6 +195,73 @@ class PetBrain(
             tossing = false
             setAnimation(if (tossVy < 40) def.fallSoft else def.fallHard)
         }
+    }
+
+    // ---- Jugar con ella: caricias y comida ----
+
+    /** Una caricia (un toque): hace algo alegre si está tranquila. Devuelve si se dejó acariciar. */
+    fun caress(): Boolean {
+        if (isChild || isDying || dragging || tossing || loopId > 0 || current == null) return false
+        if (calm()) moves.happy.randomOrNull(rnd)?.let { setAnimation(it) }
+        return true
+    }
+
+    private fun onFloor() = y + frameH >= area.bottom - 2
+
+    /**
+     * Se puede interrumpir lo que hace: en el suelo y sin subir ni bajar (caminar, dormir, sentarse...).
+     * Neko y los zorritos andan por toda la pantalla: cualquier cosa menos caer.
+     */
+    private fun calm(): Boolean {
+        val a = current ?: return false
+        val name = a.name.lowercase()
+        if (a.id == def.kill || name == "drag" || name.startsWith("fall")) return false
+        if (moves.directions.isNotEmpty()) return true
+        return onFloor() && a.start.y.constant == 0.0 && a.end.y.constant == 0.0 &&
+            a.start.x.constant != null && a.end.x.constant != null
+    }
+
+    /** Si hay comida, la lleva hacia ella (antes de cada paso). */
+    private fun steer() {
+        val t = target ?: return
+        if (isChild || isDying || dragging || tossing || loopId > 0 || !calm()) return
+        val cx = x + frameW / 2.0
+        // Que quepa entera en pantalla al llegar (así no choca con los bordes)
+        val tx = t.x.coerceIn(area.left + frameW / 2.0, area.right - frameW / 2.0)
+        val reach = maxOf(frameW / 4.0, 12.0)
+        if (moves.directions.isNotEmpty()) {
+            val ty = t.y.coerceIn((area.top + frameH).toDouble(), area.bottom.toDouble())
+            val dx = tx - cx
+            val dy = ty - (y + frameH)
+            if (Math.abs(dx) <= reach && Math.abs(dy) <= reach) { arrive(); return }
+            val h = if (dx < -reach / 2) "l" else if (dx > reach / 2) "r" else ""
+            val v = if (dy < -reach / 2) "u" else if (dy > reach / 2) "d" else ""
+            val id = moves.directions[v + h] ?: moves.directions[if (Math.abs(dx) >= Math.abs(dy)) h else v]
+                ?: moves.directions[h] ?: return
+            // Sus dibujos ya miran a cada lado: sin voltear
+            movingLeft = true
+            keepDoing(id)
+        } else {
+            val d = tx - cx
+            if (Math.abs(d) <= reach) { arrive(); return }
+            val id = if (moves.run >= 0 && Math.abs(d) > frameW * 1.5) moves.run else moves.walk
+            if (id < 0) return
+            val a = def.animations.getValue(id)
+            // En el XML avanza hacia la izquierda si x es negativa (mirando a la izquierda)
+            movingLeft = (d < 0) == (a.start.x.constant!! < 0)
+            keepDoing(id)
+        }
+    }
+
+    /** Sigue con [id]; si se le acaba, lo empieza otra vez antes de que pase a otro movimiento. */
+    private fun keepDoing(id: Int) {
+        if (current?.id != id || step >= totalSteps - 1) setAnimation(id)
+    }
+
+    private fun arrive() {
+        target = null
+        arrived = true
+        (moves.eat.randomOrNull(rnd) ?: moves.happy.randomOrNull(rnd))?.let { setAnimation(it) }
     }
 
     /** Modo prueba: hace ya este movimiento. */
@@ -544,7 +628,8 @@ class PetBrain(
 
     /** La mascota con la que choco en este paso, si la hay. */
     private fun bumpInto(dx: Double, dy: Double): PetBrain? {
-        if (isChild) return null
+        // Yendo a la comida no se entretiene con las demás
+        if (isChild || target != null) return null
         val nx = x + dx
         val ny = y + dy
         for (o in others()) {

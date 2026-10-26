@@ -74,6 +74,37 @@ adb shell locksettings clear --old 1234 || true
 echo "Con PIN: visibles con la pantalla bloqueada $bloqueada, al desbloquear $con_pin" | tee -a shots/bateria.txt
 echo "::notice title=Visibles con PIN::bloqueada $bloqueada, al desbloquear $con_pin"
 if [ "$con_pin" -lt 4 ]; then echo "::error::Al desbloquear con PIN no volvieron las mascotas ($con_pin visibles)"; fail=1; fi
+# Caricia: un toque a una mascota tiene que sacar corazones
+ventanas() { adb shell dumpsys window windows | python3 .github/scripts/ventanas.py "$@"; }
+corazones=0
+for intento in 1 2 3; do
+  centro=$(ventanas centros $PKG | sed -n "${intento}p")
+  [ -z "$centro" ] && continue
+  adb shell input tap $centro
+  sleep 0.6
+  corazones=$(ventanas contar Corazones-mascota)
+  [ "$corazones" -gt 0 ] && break
+  sleep 2
+done
+adb exec-out screencap -p > shots/caricia.png
+echo "::notice title=Caricia::$corazones ventanas de corazones tras tocar una mascota (intento $intento)"
+if [ "$corazones" -lt 1 ]; then echo "::error::Al tocar una mascota no salieron corazones"; fail=1; fi
+# Comida desde el atajo del icono: cae, van a por ella y se la comen
+adb shell am start -n $PKG/.AccionActivity -a com.billkevin91.mascota.atajo.COMER
+sleep 3
+adb exec-out screencap -p > shots/comida.png
+comida=$(ventanas contar Comida-mascota)
+comida_en=-1
+if [ "$comida" -ge 1 ]; then
+  for s in $(seq 5 5 120); do
+    sleep 5
+    if [ "$(ventanas contar Comida-mascota)" -eq 0 ]; then comida_en=$s; break; fi
+  done
+fi
+adb exec-out screencap -p > shots/comida_despues.png
+echo "::notice title=Comida::aparecieron $comida; se la comieron a los ${comida_en} s (-1 = no)"
+if [ "$comida" -lt 1 ]; then echo "::error::El atajo Dar de comer no echó comida"; fail=1; fi
+if [ "$comida_en" -lt 0 ]; then echo "::error::Nadie se comió la comida en 2 minutos"; fail=1; fi
 hz=100
 if [ -z "$c0$c1" ] || [ -z "$c2" ] || [ -z "$c3" ]; then
   echo "::warning::No se pudo medir el tiempo de CPU"; c0=0; c1=0; c2=0; c3=0

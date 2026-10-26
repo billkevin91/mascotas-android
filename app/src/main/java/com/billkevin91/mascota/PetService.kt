@@ -48,12 +48,20 @@ class PetService : Service() {
         const val ACTION_TEST_CLEAR = "com.billkevin91.mascota.TEST_CLEAR"
         const val ACTION_FORGET = "com.billkevin91.mascota.FORGET"
         const val ACTION_SOUND = "com.billkevin91.mascota.SOUND"
+        const val ACTION_FEED = "com.billkevin91.mascota.FEED"
         const val EXTRA_PET = "pet"
         const val EXTRA_SIZE = "size"
         const val EXTRA_ANIMATION = "animation"
         const val EXTRA_LOOP = "loop"
         private const val CHANNEL = "mascotas"
         private const val MAX_PETS = 12
+        private const val MAX_FOOD = 5
+        private const val MAX_HEARTS = 8
+        /** Con el dedo quieto encima este tiempo, se levanta (como antes al tocarla). */
+        private const val HOLD_MS = 250L
+        /** Cuántas mascotas normales hay en pantalla (para el botón "Dar de comer"). */
+        @Volatile var petsOnScreen = 0
+            private set
 
         fun add(context: Context, pet: String, size: Float) {
             val i = Intent(context, PetService::class.java).setAction(ACTION_ADD)
@@ -67,6 +75,9 @@ class PetService : Service() {
                 .putExtra(EXTRA_PET, pet).putExtra(EXTRA_ANIMATION, id).putExtra(EXTRA_LOOP, loop)
             if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(i) else context.startService(i)
         }
+
+        /** Cae comida desde arriba; las mascotas van a comérsela. */
+        fun feed(context: Context) = send(context, ACTION_FEED)
 
         fun clear(context: Context) {
             context.startService(Intent(context, PetService::class.java).setAction(ACTION_CLEAR))
@@ -99,6 +110,10 @@ class PetService : Service() {
     private val defs = HashMap<String, PetDef>()
     private val sheets = HashMap<String, Bitmap>()
     private val areas = HashMap<Int, Area>()
+    /** La pantalla en píxeles reales (para la comida). */
+    private val screen = Area()
+    private val foods = ArrayList<FoodWindow>()
+    private val hearts = ArrayList<View>()
     private var speed = 1.0
     private var testSpeed = 1.0
     private var showNames = false
@@ -139,6 +154,7 @@ class PetService : Service() {
     override fun onCreate() {
         super.onCreate()
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
+        measure(screen, 1)
         sounds = PetSounds(this)
         startInForeground()
         val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
@@ -212,6 +228,15 @@ class PetService : Service() {
                 if (pets.isEmpty()) stopSelf()
                 return START_STICKY
             }
+            ACTION_FEED -> {
+                if (pets.none { !it.test && !it.brain.isChild }) {
+                    if (pets.isEmpty()) stopSelf()
+                    return START_STICKY
+                }
+                if (foods.size >= MAX_FOOD) foods.first().remove()
+                FoodWindow().show()
+                return START_STICKY
+            }
             ACTION_TEST_CLEAR -> {
                 for (p in ArrayList(pets)) if (p.test) p.remove()
                 if (pets.isEmpty()) stopSelf()
@@ -266,6 +291,8 @@ class PetService : Service() {
         super.onConfigurationChanged(newConfig)
         // Giro de pantalla: nuevas medidas para todas
         for ((scale, area) in areas) measure(area, scale)
+        measure(screen, 1)
+        for (f in ArrayList(foods)) f.drop()
     }
 
     override fun onDestroy() {
@@ -351,6 +378,204 @@ class PetService : Service() {
 
     private fun removeAll() {
         for (p in ArrayList(pets)) p.remove()
+        for (f in ArrayList(foods)) f.remove()
+        for (h in ArrayList(hearts)) removeHearts(h)
+    }
+
+    private fun countPets() {
+        petsOnScreen = pets.count { !it.test && !it.brain.isChild }
+    }
+
+    /** La comida (ya en el suelo) más cercana a esa mascota. */
+    private fun nearestFood(p: PetWindow): FoodWindow? {
+        val cx = p.centerX()
+        return foods.filter { it.ready() }.minByOrNull { Math.abs(it.centerX() - cx) }
+    }
+
+    /** Corazoncitos que suben y se desvanecen (caricias y comida). */
+    private fun showHearts(cx: Int, top: Int) {
+        if (hearts.size >= MAX_HEARTS) return
+        val d = resources.displayMetrics.density
+        val w = (64 * d).toInt()
+        val h = (90 * d).toInt()
+        val lp = WindowManager.LayoutParams(
+            w, h, overlayType(),
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            x = cx - w / 2
+            y = top - h + (16 * d).toInt()
+            title = "Corazones-mascota"
+            if (Build.VERSION.SDK_INT >= 30) setFitInsetsTypes(0)
+        }
+        val start = SystemClock.uptimeMillis()
+        val view = object : View(this) {
+            private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(255, 77, 109) }
+            private val path = android.graphics.Path()
+            override fun onDraw(canvas: Canvas) {
+                val t = (SystemClock.uptimeMillis() - start) / 1400f
+                if (t >= 1f) {
+                    // Fuera de onDraw: quitar la ventana mientras se dibuja no es seguro
+                    post { removeHearts(this) }
+                    return
+                }
+                // Tres corazones que salen uno detrás de otro, suben haciendo eses y se desvanecen
+                for (i in 0 until 3) {
+                    val k = ((t * 1.4f) - i * 0.2f).coerceIn(0f, 1f)
+                    if (k <= 0f) continue
+                    val size = width * (0.28f - i * 0.04f)
+                    val hx = width * (0.5f + 0.22f * kotlin.math.sin(k * 6f + i * 2f))
+                    val hy = height - size - k * (height - size * 1.5f)
+                    paint.alpha = ((1f - k) * 255).toInt()
+                    heart(canvas, hx, hy, size)
+                }
+                postInvalidateOnAnimation()
+            }
+
+            private fun heart(c: Canvas, cx: Float, top: Float, s: Float) {
+                path.reset()
+                path.moveTo(cx, top + s * 0.3f)
+                path.cubicTo(cx, top, cx - s * 0.5f, top, cx - s * 0.5f, top + s * 0.3f)
+                path.cubicTo(cx - s * 0.5f, top + s * 0.6f, cx, top + s * 0.8f, cx, top + s)
+                path.cubicTo(cx, top + s * 0.8f, cx + s * 0.5f, top + s * 0.6f, cx + s * 0.5f, top + s * 0.3f)
+                path.cubicTo(cx + s * 0.5f, top, cx, top, cx, top + s * 0.3f)
+                c.drawPath(path, paint)
+            }
+        }
+        if (runCatching { wm.addView(view, lp) }.isSuccess) hearts.add(view)
+    }
+
+    private fun removeHearts(v: View) {
+        if (hearts.remove(v)) runCatching { wm.removeView(v) }
+    }
+
+    private fun overlayType() =
+        if (Build.VERSION.SDK_INT >= 26) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE
+
+    /**
+     * Comida que cae desde arriba y se queda en el suelo. Se puede arrastrar para llevarla
+     * donde quieras (las mascotas la siguen) y quitar con doble toque. Si nadie se la come, se va sola.
+     */
+    private inner class FoodWindow {
+        private val size = (36 * resources.displayMetrics.density *
+            getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE).getFloat(MainActivity.PREF_SIZE, 1f)).roundToInt()
+        private val emoji = listOf("🍎", "🍪", "🍓", "🥕", "🍌", "🧀").random()
+        private var x = 0f
+        private var y = 0f
+        private var vy = 0f
+        private var landed = false
+        private var dragging = false
+        private var attached = false
+        private var lastFrame = 0L
+        private val params = WindowManager.LayoutParams(
+            size, size, overlayType(),
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            title = "Comida-mascota"
+            if (Build.VERSION.SDK_INT >= 30) setFitInsetsTypes(0)
+        }
+        private val fall = object : Runnable {
+            override fun run() {
+                if (!attached || dragging) return
+                val now = SystemClock.uptimeMillis()
+                val dt = ((now - lastFrame).coerceIn(1, 50)) / 1000f
+                lastFrame = now
+                vy += 2500f * resources.displayMetrics.density * dt
+                y += vy * dt
+                val floor = (screen.bottom - size).toFloat()
+                if (y >= floor) { y = floor; landed = true }
+                place()
+                if (!landed) handler.postDelayed(this, 16)
+            }
+        }
+        private val expire = Runnable { remove() }
+        private val view = object : View(this@PetService) {
+            private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
+            private var grabX = 0f
+            private var grabY = 0f
+            private var lastUp = 0L
+
+            override fun onDraw(canvas: Canvas) {
+                paint.textSize = height * 0.8f
+                canvas.drawText(emoji, width / 2f, height * 0.8f, paint)
+            }
+
+            @SuppressLint("ClickableViewAccessibility")
+            override fun onTouchEvent(e: MotionEvent): Boolean {
+                when (e.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        val now = SystemClock.uptimeMillis()
+                        if (now - lastUp < ViewConfiguration.getDoubleTapTimeout()) { remove(); return true }
+                        dragging = true
+                        landed = false
+                        handler.removeCallbacks(fall)
+                        grabX = e.rawX - x
+                        grabY = e.rawY - y
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        x = e.rawX - grabX
+                        y = e.rawY - grabY
+                        place()
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        lastUp = SystemClock.uptimeMillis()
+                        dragging = false
+                        drop()
+                    }
+                }
+                return true
+            }
+        }
+
+        fun show() {
+            val left = screen.left + (screen.right - screen.left - size) * (0.2f + 0.6f * Math.random().toFloat())
+            x = left
+            y = screen.top.toFloat()
+            params.x = x.roundToInt()
+            params.y = y.roundToInt()
+            attached = runCatching { wm.addView(view, params) }.isSuccess
+            if (!attached) return
+            foods.add(this)
+            handler.postDelayed(expire, 3 * 60_000L)
+            drop()
+        }
+
+        /** Que caiga desde donde está hasta el suelo. */
+        fun drop() {
+            if (!attached) return
+            landed = false
+            vy = 0f
+            lastFrame = SystemClock.uptimeMillis()
+            handler.removeCallbacks(fall)
+            handler.post(fall)
+        }
+
+        private fun place() {
+            x = x.coerceIn(screen.left.toFloat(), (screen.right - size).toFloat().coerceAtLeast(screen.left.toFloat()))
+            params.x = x.roundToInt()
+            params.y = y.roundToInt()
+            runCatching { wm.updateViewLayout(view, params) }
+        }
+
+        /** En el suelo y sin arrastrar: ya se puede ir a por ella. */
+        fun ready() = attached && landed && !dragging
+        fun centerX() = x + size / 2f
+        fun bottom() = y + size
+
+        fun remove() {
+            if (!attached) return
+            attached = false
+            handler.removeCallbacks(fall)
+            handler.removeCallbacks(expire)
+            runCatching { wm.removeView(view) }
+            foods.remove(this)
+        }
     }
 
     /** Mide la pantalla en píxeles de mascota; el suelo queda sobre la barra de navegación. */
@@ -399,6 +624,8 @@ class PetService : Service() {
     ) {
         var paused = false
             private set
+
+        fun centerX() = params.x + params.width / 2f
         private val view = SpriteView()
         private val params = WindowManager.LayoutParams(
             brain.frameW * scale,
@@ -445,7 +672,14 @@ class PetService : Service() {
                 if (!attached || paused) return
                 val animBefore = brain.animationId
                 val restartsBefore = brain.restarts
+                // La comida: no si es de prueba, una cría o está en medio de algo con crías (la tina)
+                val food = if (test || brain.isChild || pets.any { it.parent === this@PetWindow }) null else nearestFood(this@PetWindow)
+                brain.target = food?.let { Target(it.centerX().toDouble() / scale, it.bottom().toDouble() / scale) }
                 val delay = brain.tick()
+                if (brain.takeArrived()) {
+                    food?.remove()
+                    showHearts(centerX().roundToInt(), params.y)
+                }
                 if (soundOn) for (id in brain.takeStarted()) sounds.started(folder, brain.def, id, always = test) else brain.takeStarted()
                 if (brain.restarts != restartsBefore) {
                     // Modo prueba: empieza de nuevo, las crías de la vuelta anterior sobran
@@ -490,6 +724,7 @@ class PetService : Service() {
                 return false
             }
             pets.add(this)
+            countPets()
             refreshLabel()
             handler.post(tick)
             return true
@@ -597,6 +832,7 @@ class PetService : Service() {
             label?.let { runCatching { wm.removeView(it) } }
             label = null
             pets.remove(this)
+            countPets()
             if (pets.none { !it.brain.isChild }) {
                 for (p in ArrayList(pets)) p.remove()
                 // Un momento después: al cambiar la mascota de prueba se quita una y llega otra
@@ -655,6 +891,27 @@ class PetService : Service() {
             // x, y y tiempo; Double y no Float: con el teléfono encendido varios días
             // uptimeMillis es tan grande que un Float lo redondea a 16-32 ms
             private val samples = ArrayDeque<DoubleArray>()
+            /** Ya se levantó (arrastrando); si no, al soltar fue un toque. */
+            private var grabbed = false
+            private val hold = Runnable { if (attached && !grabbed) startGrab() }
+            private val caress = Runnable {
+                if (attached && !paused && brain.caress()) {
+                    showHearts(centerX().roundToInt(), params.y)
+                    handler.removeCallbacks(tick)
+                    handler.post(tick)
+                }
+            }
+
+            private fun startGrab() {
+                grabbed = true
+                handler.removeCallbacks(caress)
+                handler.removeCallbacks(toss)
+                brain.grab()
+                brain.offsetY = 0.0
+                // Que el cambio de dibujo se vea ya
+                handler.removeCallbacks(tick)
+                handler.post(tick)
+            }
 
             override fun onDraw(canvas: Canvas) {
                 val fw = brain.frameW
@@ -697,7 +954,8 @@ class PetService : Service() {
                         if (now - lastUp < ViewConfiguration.getDoubleTapTimeout() &&
                             abs(e.rawX - downX) < slop * 2 && abs(e.rawY - downY) < slop * 2
                         ) {
-                            // Doble toque: se despide
+                            // Doble toque: se despide (y no hay caricia del primer toque)
+                            handler.removeCallbacks(caress)
                             handler.removeCallbacks(toss)
                             brain.kill()
                             return true
@@ -708,14 +966,16 @@ class PetService : Service() {
                         grabY = e.rawY - params.y
                         samples.clear()
                         samples.addLast(doubleArrayOf(e.rawX.toDouble(), e.rawY.toDouble(), now.toDouble()))
-                        handler.removeCallbacks(toss)
-                        brain.grab()
-                        brain.offsetY = 0.0
-                        // Que el cambio de dibujo se vea ya
-                        handler.removeCallbacks(tick)
-                        handler.post(tick)
+                        grabbed = false
+                        // Volando se atrapa al momento; si no, se levanta al moverla o al dejar el dedo encima
+                        if (brain.tossing) startGrab() else handler.postDelayed(hold, HOLD_MS)
                     }
                     MotionEvent.ACTION_MOVE -> {
+                        if (!grabbed) {
+                            if (abs(e.rawX - downX) < slop && abs(e.rawY - downY) < slop) return true
+                            handler.removeCallbacks(hold)
+                            startGrab()
+                        }
                         brain.x = ((e.rawX - grabX) / scale).toDouble()
                         brain.y = ((e.rawY - grabY) / scale).toDouble()
                         brain.offsetY = 0.0
@@ -727,6 +987,16 @@ class PetService : Service() {
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                         val now = SystemClock.uptimeMillis()
                         lastUp = now
+                        handler.removeCallbacks(hold)
+                        if (!grabbed) {
+                            // Un toque: caricia, si no llega el segundo toque de la despedida
+                            if (e.actionMasked == MotionEvent.ACTION_UP) {
+                                handler.removeCallbacks(caress)
+                                handler.postDelayed(caress, ViewConfiguration.getDoubleTapTimeout().toLong())
+                            }
+                            return true
+                        }
+                        grabbed = false
                         var vx = 0.0
                         var vy = 0.0
                         val first = samples.firstOrNull()

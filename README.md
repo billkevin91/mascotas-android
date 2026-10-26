@@ -6,6 +6,8 @@ Es un port a Kotlin del motor de [desktopPet](https://github.com/Adrianotiger/de
 (versión 1.6.0, commit `f86f303`, licencia MIT) y usa sus mismos archivos `animations.xml`.
 
 - Arrastra la mascota con el dedo, lánzala y verás cómo rebota y cae.
+- **Tócala** para acariciarla: se alegra y le salen corazones.
+- **Dar de comer** (en la app o manteniendo pulsado su icono): cae comida y van a por ella; arrastra la comida para llevarlas donde quieras.
 - Toca dos veces para despedirla.
 - Si pones varias, reaccionan al chocar entre sí: las eSheep se dan la vuelta, rebotan
   o se echan a dormir junto a la que ya duerme; las demás se dan la vuelta o siguen de largo.
@@ -30,6 +32,8 @@ Es un port a Kotlin del motor de [desktopPet](https://github.com/Adrianotiger/de
 | `MainActivity.kt` | Elegir mascota y tamaño, pedir el permiso y soltarla |
 | `EditorActivity.kt`, `PetEdit.kt` | Editor sencillo de movimientos |
 | `PetSounds.kt` | Sonidos de las mascotas |
+| `PetMoves.kt` | Qué movimientos sirven para caminar, alegrarse y comer |
+| `AccionActivity.kt` | Atajos del icono: dar de comer y otra mascota |
 | `TestActivity.kt` | Modo prueba: lista de movimientos para verlos uno a uno |
 | `PetLibrary.kt` | Mascotas incluidas e importadas; importar, guardar y borrar |
 | `PetXml.kt` | Guardar una mascota en formato `animations.xml` (para el editor) |

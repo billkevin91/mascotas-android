@@ -38,6 +38,16 @@ class MainActivity : Activity() {
         private val SPEEDS = listOf("Lenta" to 0.5f, "Tranquila" to 0.75f, "Normal" to 1f, "Rápida" to 1.25f)
 
         /** Botones de velocidad (se guardan y el servicio la aplica al momento). */
+        /** Echa comida si hay mascotas paseando; si no, avisa. Devuelve si la echó. */
+        fun feed(a: Activity): Boolean {
+            if (PetService.petsOnScreen == 0) {
+                android.widget.Toast.makeText(a, "Primero suelta una mascota", android.widget.Toast.LENGTH_SHORT).show()
+                return false
+            }
+            PetService.feed(a)
+            return true
+        }
+
         fun speedRow(a: Activity, key: String = PREF_SPEED): LinearLayout {
             val prefs = a.getSharedPreferences(PREFS, MODE_PRIVATE)
             val row = LinearLayout(a).apply { orientation = LinearLayout.HORIZONTAL }
@@ -148,6 +158,9 @@ class MainActivity : Activity() {
             background = GradientDrawable().apply { setColor(green); cornerRadius = dp(12).toFloat() }
         }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(56)))
         col.addView(View(this), LinearLayout.LayoutParams(1, dp(8)))
+        col.addView(button("🍪 Dar de comer") { if (feed(this)) goHome() })
+        col.addView(text("Toca una mascota para acariciarla. La comida se puede arrastrar: " +
+            "irán a por ella. También desde el icono de la app (mantenlo pulsado).").apply { textSize = 13f; alpha = 0.7f })
         col.addView(button("Quitar todas") { PetService.clear(this) })
         col.addView(button("Probar movimientos") { startActivity(Intent(this, TestActivity::class.java)) })
         col.addView(button("Editar mascotas") { startActivity(Intent(this, EditorActivity::class.java)) })
@@ -184,7 +197,11 @@ class MainActivity : Activity() {
         if (!Settings.canDrawOverlays(this)) { askOverlay(); return }
         save()
         PetService.add(this, pet, size)
-        // Vuelve al inicio para verla pasear
+        goHome()
+    }
+
+    /** Vuelve al inicio para ver a las mascotas. */
+    private fun goHome() {
         startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
