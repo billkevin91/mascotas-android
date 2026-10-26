@@ -181,6 +181,24 @@ if [ -z "$compartido" ] || [ "$menu" -lt 1 ]; then echo "::error::No se pudo com
 adb shell input keyevent KEYCODE_BACK
 adb shell input keyevent KEYCODE_HOME
 sleep 2
+# Flor: le sale una flor a la oveja azul; un toque y alguna mascota va a comérsela
+adb logcat -c
+adb shell am start -n $PKG/.MainActivity -f 0x10008000 --es flor blue_sheep
+sleep 6
+adb exec-out screencap -p > shots/flor.png
+# La flor es la ventana de mascota más reciente (la de más arriba en la lista de ventanas)
+flor=$(ventanas centros $PKG | head -1)
+[ -n "$flor" ] && adb shell input tap $flor
+flor_en=-1
+for s in $(seq 1 60); do
+  sleep 1
+  if adb logcat -d -s Mascotas | grep -q "se la comió .*(flor)"; then flor_en=$s; break; fi
+done
+adb logcat -d -s Mascotas | grep -E "flor|comió" > shots/flor.txt
+echo "::notice title=Flor::$(tr '\n' ' ' < shots/flor.txt) — comida a los ${flor_en} s"
+if ! grep -q "flor: aparece" shots/flor.txt; then echo "::error::No salió la flor"; fail=1
+elif ! grep -q "lista para comer" shots/flor.txt; then echo "::error::Al tocar la flor no se volvió comida"; fail=1
+elif [ "$flor_en" -lt 0 ]; then echo "::error::Nadie se comió la flor en 1 minuto"; fail=1; fi
 # Idioma: el emulador está en inglés, así que la app tiene que salir en inglés
 adb shell am start -n $PKG/.MainActivity -f 0x10008000
 sleep 3

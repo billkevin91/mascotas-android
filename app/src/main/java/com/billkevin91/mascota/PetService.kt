@@ -49,6 +49,7 @@ class PetService : Service() {
         const val ACTION_FORGET = "com.billkevin91.mascota.FORGET"
         const val ACTION_SOUND = "com.billkevin91.mascota.SOUND"
         const val ACTION_FEED = "com.billkevin91.mascota.FEED"
+        const val ACTION_TEST_FLOWER = "com.billkevin91.mascota.TEST_FLOWER"
         const val EXTRA_PET = "pet"
         const val EXTRA_SIZE = "size"
         const val EXTRA_ANIMATION = "animation"
@@ -57,6 +58,8 @@ class PetService : Service() {
         private const val TAG = "Mascotas"
         private const val MAX_FOOD = 5
         private const val MAX_CHILDREN = 30
+        private const val GLIDE_FRAME_MS = 33L
+        private const val MAX_FLOWER_MS = 120_000L
         private const val MAX_HEARTS = 8
         /** Con el dedo quieto encima este tiempo, se levanta (como antes al tocarla). */
         private const val HOLD_MS = 250L
@@ -75,6 +78,11 @@ class PetService : Service() {
             val i = Intent(context, PetService::class.java).setAction(ACTION_PLAY)
                 .putExtra(EXTRA_PET, pet).putExtra(EXTRA_ANIMATION, id).putExtra(EXTRA_LOOP, loop)
             if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(i) else context.startService(i)
+        }
+
+        /** Prueba automática: a la primera mascota de ese tipo le sale una flor (como al comer). */
+        fun testFlower(context: Context, pet: String) {
+            runCatching { context.startService(Intent(context, PetService::class.java).setAction(ACTION_TEST_FLOWER).putExtra(EXTRA_PET, pet)) }
         }
 
         /** Cae comida desde arriba; las mascotas van a comérsela. */
@@ -313,6 +321,11 @@ class PetService : Service() {
                 if (pets.isEmpty()) stopSelf()
                 return START_STICKY
             }
+            ACTION_TEST_FLOWER -> {
+                val pet = intent.getStringExtra(EXTRA_PET)
+                pets.firstOrNull { it.folder == pet && !it.brain.isChild && !it.test }?.sproutFlower()
+                return START_STICKY
+            }
             ACTION_FEED -> {
                 if (pets.none { !it.test && !it.brain.isChild }) {
                     android.util.Log.i(TAG, "comida: no hay mascotas")
@@ -507,7 +520,10 @@ class PetService : Service() {
     }
 
     /** Las que están en pantalla (las pausadas no chocan con nadie). */
-    private fun allBrains(): List<PetBrain> = pets.filter { !it.paused }.map { it.brain }
+    private fun allBrains(): List<PetBrain> = brainsCache ?: pets.filter { !it.paused }.map { it.brain }.also { brainsCache = it }
+
+    /** La lista de [allBrains] se rehace sólo si cambian las mascotas (antes, en cada paso de cada una). */
+    private var brainsCache: List<PetBrain>? = null
 
     private fun removeAll() {
         for (p in ArrayList(pets)) p.remove()
@@ -520,9 +536,19 @@ class PetService : Service() {
     }
 
     /** La comida (ya en el suelo) más cercana a esa mascota. */
-    private fun nearestFood(p: PetWindow): FoodWindow? {
+    /** Algo que se pueden comer: la comida que cae o una flor que tocaste. */
+    private interface Snack {
+        fun ready(): Boolean
+        fun centerX(): Float
+        fun bottom(): Float
+        fun eaten()
+        val isFlower: Boolean
+    }
+
+    private fun nearestFood(p: PetWindow): Snack? {
         val cx = p.centerX()
-        return foods.filter { it.ready() }.minByOrNull { Math.abs(it.centerX() - cx) }
+        val flowers = pets.filter { it.treat }.map { it.asSnack }
+        return (foods + flowers).filter { it.ready() }.minByOrNull { Math.abs(it.centerX() - cx) }
     }
 
     /** Corazoncitos (o [emoji], si se da) que suben y se desvanecen: caricias, comida y reacciones. */
@@ -596,7 +622,7 @@ class PetService : Service() {
      * Comida que cae desde arriba y se queda en el suelo. Se puede arrastrar para llevarla
      * donde quieras (las mascotas la siguen) y quitar con doble toque. Si nadie se la come, se va sola.
      */
-    private inner class FoodWindow {
+    private inner class FoodWindow : Snack {
         private val size = (36 * resources.displayMetrics.density *
             getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE).getFloat(MainActivity.PREF_SIZE, 1f)).roundToInt()
         private val emoji = listOf("🍎", "🍪", "🍓", "🥕", "🍌", "🧀").random()
@@ -707,9 +733,11 @@ class PetService : Service() {
         }
 
         /** En el suelo y sin arrastrar: ya se puede ir a por ella. */
-        fun ready() = attached && landed && !dragging
-        fun centerX() = x + size / 2f
-        fun bottom() = y + size
+        override fun ready() = attached && landed && !dragging
+        override fun centerX() = x + size / 2f
+        override fun bottom() = y + size
+        override fun eaten() = remove()
+        override val isFlower = false
 
         fun remove() {
             if (!attached) return
@@ -769,6 +797,34 @@ class PetService : Service() {
             private set
 
         fun centerX() = params.x + params.width / 2f
+
+        /** Le sale una flor (la cría de su movimiento de comer), para la prueba automática. */
+        fun sproutFlower() {
+            val def = brain.def
+            val c = def.children.values.flatten().firstOrNull { def.animations[it.next]?.name?.lowercase()?.contains("flower") == true } ?: return
+            val cb = PetBrain(def, brain.area, brain.frameW, brain.frameH, ChildRequest(c, brain.x, brain.y, !brain.movingLeft, 1, 50))
+            cb.scale = scale
+            cb.others = ::allBrains
+            cb.speed = brain.speed
+            cb.start()
+            if (PetWindow(cb, sheet, scale, folder, parent = this).show()) android.util.Log.i(TAG, "flor: aparece")
+        }
+
+        /** Una flor que tocaste: ahora es comida para las demás. */
+        var treat = false
+        private val born = SystemClock.uptimeMillis()
+
+        /** Flores de las ovejas (flower, bloom...): se pueden comer y se marchitan antes. */
+        fun isFlower() = brain.isChild && brain.animationName.lowercase().let { "flower" in it || "bloom" in it || "flor" in it }
+
+        val asSnack = object : Snack {
+            override fun ready() = attached && !paused && treat && !brain.isDying &&
+                brain.y + brain.frameH >= brain.area.bottom - 2
+            override fun centerX() = this@PetWindow.centerX()
+            override fun bottom() = (params.y + params.height).toFloat()
+            override fun eaten() { treat = false; remove() }
+            override val isFlower = true
+        }
         fun top() = params.y
 
         /** Que el cambio de movimiento se vea ya. */
@@ -778,7 +834,8 @@ class PetService : Service() {
         }
 
         init {
-            brain.hasKids = { pets.any { it.parent === this } }
+            // Las flores son adorno: no la tienen ocupada (sí la tina u otras crías de una escena)
+            brain.hasKids = { pets.any { it.parent === this && !it.isFlower() } }
         }
         private val view = SpriteView()
         private val params = WindowManager.LayoutParams(
@@ -802,6 +859,10 @@ class PetService : Service() {
         }
         private var attached = false
         private var lastToss = 0L
+        // Lo último que se dibujó
+        private var drawnFrame = -1
+        private var drawnOpacity = -1.0
+        private var drawnLeft = false
 
         // Deslizamiento entre pasos (las "Smooth movements" de desktopPet). Sin esto, con
         // la mascota ampliada la ventana salta varios píxeles de golpe en cada paso.
@@ -817,8 +878,13 @@ class PetService : Service() {
                 val t = if (glideMs <= 0) 1f
                 else ((SystemClock.uptimeMillis() - glideStart).toFloat() / glideMs).coerceIn(0f, 1f)
                 glideFrames++
-                place(fromX + (toX - fromX) * t, fromY + (toY - fromY) * t)
-                if (t < 1f) view.postOnAnimation(this)
+                if (t >= 1f) { place(toX, toY); return }
+                // De píxel de mascota en píxel de mascota (cada uno son [scale] píxeles de la pantalla):
+                // en pixel art se ve igual de suave y la ventana se mueve unas 3 veces menos
+                fun snap(d: Float) = (d / scale).roundToInt() * scale.toFloat()
+                place(fromX + snap((toX - fromX) * t), fromY + snap((toY - fromY) * t))
+                // ~30 fotogramas por segundo bastan para deslizarse (la pantalla puede ir a 60-120)
+                view.postOnAnimationDelayed(this, GLIDE_FRAME_MS)
             }
         }
 
@@ -833,8 +899,8 @@ class PetService : Service() {
                 val delay = brain.tick()
                 ticks++
                 if (brain.takeArrived()) {
-                    android.util.Log.i(TAG, "comida: se la comió $folder")
-                    food?.remove()
+                    android.util.Log.i(TAG, "comida: se la comió $folder" + if (food?.isFlower == true) " (flor)" else "")
+                    food?.eaten()
                     showHearts(centerX().roundToInt(), params.y)
                 }
                 if (soundOn) for (id in brain.takeStarted()) sounds.started(folder, brain.def, id, always = test) else brain.takeStarted()
@@ -858,6 +924,8 @@ class PetService : Service() {
                         ?.let { if (!shouldRun(it)) it.pause() }
                 }
                 if (brain.finished) { remove(); return }
+                // En desktopPet una flor puede tardar ~8 minutos en marchitarse: aquí, como mucho 2
+                if (isFlower() && SystemClock.uptimeMillis() - born > MAX_FLOWER_MS) brain.kill()
                 update(glideFor = delay.toLong())
                 refreshLabel()
                 handler.postDelayed(this, delay.toLong())
@@ -883,6 +951,7 @@ class PetService : Service() {
                 return false
             }
             pets.add(this)
+            brainsCache = null
             countPets()
             refreshLabel()
             handler.post(tick)
@@ -899,6 +968,7 @@ class PetService : Service() {
         /** Mientras se prueban movimientos o con la pantalla apagada: quieta e invisible (tampoco recibe toques). */
         fun pause() {
             if (paused || !attached) return
+            brainsCache = null
             paused = true
             handler.removeCallbacks(tick)
             handler.removeCallbacks(toss)
@@ -909,6 +979,7 @@ class PetService : Service() {
 
         fun resume() {
             if (!paused || !attached) return
+            brainsCache = null
             paused = false
             view.visibility = View.VISIBLE
             if (brain.tossing) {
@@ -991,6 +1062,7 @@ class PetService : Service() {
             label?.let { runCatching { wm.removeView(it) } }
             label = null
             pets.remove(this)
+            brainsCache = null
             countPets()
             if (pets.none { !it.brain.isChild }) {
                 for (p in ArrayList(pets)) p.remove()
@@ -1003,8 +1075,12 @@ class PetService : Service() {
         private fun update(addNow: Boolean = false, glideFor: Long = 0) {
             val x = (brain.x * scale).toFloat()
             val y = ((brain.y + brain.offsetY) * scale).toFloat()
-            view.invalidate()
-            draws++
+            // Sólo se vuelve a dibujar si cambia algo (durmiendo, el dibujo se repite mucho)
+            if (addNow || brain.frame != drawnFrame || brain.opacity != drawnOpacity || brain.movingLeft != drawnLeft) {
+                drawnFrame = brain.frame; drawnOpacity = brain.opacity; drawnLeft = brain.movingLeft
+                view.invalidate()
+                draws++
+            }
             if (addNow) {
                 toX = x; toY = y
                 params.x = x.roundToInt()
@@ -1055,6 +1131,12 @@ class PetService : Service() {
             /** Ya se levantó (arrastrando); si no, al soltar fue un toque. */
             private var grabbed = false
             private val hold = Runnable { if (attached && !grabbed) startGrab() }
+            private val offerFlower = Runnable {
+                if (!attached || treat) return@Runnable
+                treat = true
+                android.util.Log.i(TAG, "flor: lista para comer")
+                showHearts(centerX().roundToInt(), params.y)
+            }
             private val caress = Runnable {
                 if (attached && !paused && brain.caress()) {
                     android.util.Log.i(TAG, "caricia: $folder hace ${brain.animationName}")
@@ -1098,15 +1180,23 @@ class PetService : Service() {
             override fun onTouchEvent(e: MotionEvent): Boolean {
                 if (brain.isDying && brain.loopId <= 0) return false
                 if (brain.isChild) {
-                    // Las crías (oveja negra, flores...) no se arrastran: doble toque y se van
-                    if (e.actionMasked == MotionEvent.ACTION_DOWN) {
-                        val now = SystemClock.uptimeMillis()
-                        if (now - lastUp < ViewConfiguration.getDoubleTapTimeout()) {
-                            brain.kill()
-                            handler.removeCallbacks(tick)
-                            handler.post(tick)
+                    // Las crías (oveja negra, flores...) no se arrastran: doble toque y se van.
+                    // Una flor con un toque se vuelve comida: la mascota más cercana va a comérsela.
+                    when (e.actionMasked) {
+                        MotionEvent.ACTION_DOWN -> {
+                            val now = SystemClock.uptimeMillis()
+                            if (now - lastUp < ViewConfiguration.getDoubleTapTimeout()) {
+                                handler.removeCallbacks(offerFlower)
+                                brain.kill()
+                                handler.removeCallbacks(tick)
+                                handler.post(tick)
+                            }
+                            lastUp = now
                         }
-                        lastUp = now
+                        MotionEvent.ACTION_UP -> if (isFlower() && !treat) {
+                            handler.removeCallbacks(offerFlower)
+                            handler.postDelayed(offerFlower, ViewConfiguration.getDoubleTapTimeout().toLong())
+                        }
                     }
                     return true
                 }
