@@ -2,7 +2,7 @@
 
 Todos los cambios de la app, del más nuevo al más antiguo.
 
-## [Sin publicar]
+## 1.5 — 2026-10-26
 
 ### Añadido
 - **Crear mascota desde un dibujo** (botón 🎨): eliges una imagen de la galería. Con un solo dibujo,
