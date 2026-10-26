@@ -813,6 +813,7 @@ class PetService : Service() {
 
         /** Una flor que tocaste: ahora es comida para las demás. */
         var treat = false
+        private var lastInfo = 0L
         private var landedLogged = false
         private val born = SystemClock.uptimeMillis()
 
@@ -873,21 +874,21 @@ class PetService : Service() {
         private var fromY = 0f
         private var toX = 0f
         private var toY = 0f
-        private var glideStart = 0L
         private var glideMs = 0L
+        // El deslizamiento va en [glideSteps] saltos iguales, de píxel de mascota en píxel de mascota
+        // (cada uno son [scale] píxeles de la pantalla): sólo despierta cuando de verdad toca moverse
+        private var glideSteps = 0
+        private var glideStep = 0
         private val glide = object : Runnable {
             override fun run() {
                 if (!attached) return
-                val t = if (glideMs <= 0) 1f
-                else ((SystemClock.uptimeMillis() - glideStart).toFloat() / glideMs).coerceIn(0f, 1f)
                 glideFrames++
-                if (t >= 1f) { place(toX, toY); return }
-                // De píxel de mascota en píxel de mascota (cada uno son [scale] píxeles de la pantalla):
-                // en pixel art se ve igual de suave y la ventana se mueve unas 3 veces menos
+                glideStep++
+                if (glideStep >= glideSteps) { place(toX, toY); return }
                 fun snap(d: Float) = (d / scale).roundToInt() * scale.toFloat()
-                place(fromX + snap((toX - fromX) * t), fromY + snap((toY - fromY) * t))
-                // ~30 fotogramas por segundo bastan para deslizarse (la pantalla puede ir a 60-120)
-                view.postOnAnimationDelayed(this, GLIDE_FRAME_MS)
+                val k = glideStep.toFloat() / glideSteps
+                place(fromX + snap((toX - fromX) * k), fromY + snap((toY - fromY) * k))
+                view.postDelayed(this, glideMs / glideSteps)
             }
         }
 
@@ -899,6 +900,11 @@ class PetService : Service() {
                 // La comida: no si es de prueba, una cría o está en medio de algo con crías (la tina)
                 val food = if (test || brain.isChild) null else nearestFood(this@PetWindow)
                 brain.target = food?.let { Target(it.centerX().toDouble() / scale, it.bottom().toDouble() / scale) }
+                // Prueba automática: cada 5 s, qué hace cada una respecto a una flor que tocaste
+                if (food?.isFlower == true && SystemClock.uptimeMillis() - lastInfo > 5000) {
+                    lastInfo = SystemClock.uptimeMillis()
+                    android.util.Log.i(TAG, "flor: $folder ${brain.targetInfo()}")
+                }
                 val delay = brain.tick()
                 ticks++
                 if (brain.takeArrived()) {
@@ -1103,9 +1109,12 @@ class PetService : Service() {
             if (glideFor > 0 && !powerSave && !brain.dragging && !brain.tossing && !far) {
                 fromX = params.x.toFloat(); fromY = params.y.toFloat()
                 toX = x; toY = y
-                glideStart = SystemClock.uptimeMillis()
                 glideMs = glideFor
-                glide.run()
+                // Un salto por píxel de mascota, pero no más de ~30 por segundo
+                val pixels = (maxOf(Math.abs(toX - fromX), Math.abs(toY - fromY)) / scale).roundToInt()
+                glideSteps = minOf(pixels, (glideFor / GLIDE_FRAME_MS).toInt()).coerceAtLeast(1)
+                glideStep = 0
+                if (glideSteps <= 1) place(toX, toY) else view.postDelayed(glide, glideMs / glideSteps)
             } else {
                 toX = x; toY = y
                 place(x, y)

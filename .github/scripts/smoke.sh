@@ -214,7 +214,7 @@ for s in $(seq 1 60); do
   sleep 1
   if adb logcat -d -s Mascotas | grep -q "se la comió .*(flor)"; then flor_en=$s; break; fi
 done
-adb logcat -d -s Mascotas | grep -E "flor|comió" > shots/flor.txt
+adb logcat -d -s Mascotas | grep -E "flor|comió" > shots/flor.txt; cat shots/flor.txt
 echo "Flor: $(tr '\n' ' ' < shots/flor.txt) — comida a los ${flor_en} s"
 if [ -z "$flor" ]; then echo "::error::La flor no llegó al suelo"; fail=1
 elif ! grep -q "lista para comer" shots/flor.txt; then echo "::error::Al tocar la flor no se volvió comida"; fail=1

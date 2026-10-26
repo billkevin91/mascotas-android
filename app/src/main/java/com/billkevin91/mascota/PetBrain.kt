@@ -226,6 +226,12 @@ class PetBrain(
 
     private fun onFloor() = y + frameH >= area.bottom - 2
 
+    /** Para el registro de la prueba automática: por qué va (o no) hacia la comida. */
+    fun targetInfo(): String {
+        val t = target ?: return "sin comida"
+        return "${animationName} a ${(t.x - (x + frameW / 2.0)).toInt()} px, tranquila=${calm()}, suelo=${onFloor()}"
+    }
+
     /**
      * Se puede interrumpir lo que hace: en el suelo y sin subir ni bajar (caminar, dormir, sentarse...).
      * Neko y los zorritos andan por toda la pantalla: cualquier cosa menos caer.
