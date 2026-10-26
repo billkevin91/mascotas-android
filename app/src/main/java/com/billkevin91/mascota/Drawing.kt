@@ -31,7 +31,7 @@ object Drawing {
     fun trim(src: Bitmap): Bitmap {
         val px = IntArray(src.width * src.height)
         src.getPixels(px, 0, src.width, 0, 0, src.width, src.height)
-        val (l, t, r, b) = requireNotNull(Pixels.bounds(px, src.width, src.height)) { "El dibujo está vacío (¿todo era fondo?)" }.toList()
+        val (l, t, r, b) = requireNotNull(Pixels.bounds(px, src.width, src.height)) { tr("El dibujo está vacío (¿todo era fondo?)", "The drawing is empty (was it all background?)") }.toList()
         return Bitmap.createBitmap(src, l, t, r - l + 1, b - t + 1)
     }
 
@@ -97,10 +97,10 @@ object Drawing {
      * hace falta) y se vuelven a juntar en una hoja de casillas iguales.
      */
     fun gridSheet(src: Bitmap, cols: Int, rows: Int, flip: Boolean): Bitmap {
-        require(cols in 1..20 && rows in 1..20) { "Columnas y filas: de 1 a 20" }
+        require(cols in 1..20 && rows in 1..20) { tr("Columnas y filas: de 1 a 20", "Columns and rows: from 1 to 20") }
         val cw = src.width / cols
         val ch = src.height / rows
-        require(cw > 0 && ch > 0) { "La imagen es demasiado pequeña para tantas casillas" }
+        require(cw > 0 && ch > 0) { tr("La imagen es demasiado pequeña para tantas casillas", "The image is too small for that many cells") }
         val f = minOf(1f, MAX_SIDE.toFloat() / max(cw, ch))
         val tw = max(1, (cw * f).roundToInt())
         val th = max(1, (ch * f).roundToInt())

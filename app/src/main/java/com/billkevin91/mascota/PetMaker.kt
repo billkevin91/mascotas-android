@@ -64,9 +64,9 @@ object PetMaker {
 
     fun build(name: String, author: String, tilesX: Int, tilesY: Int, png: String, poses: Poses): PetDef {
         val n = tilesX * tilesY
-        require(n > 0) { "La hoja no tiene dibujos" }
+        require(n > 0) { tr("La hoja no tiene dibujos", "The sheet has no drawings") }
         val all = with(poses) { walk + hop + sleep + listOf(stand, step, dangle, land) }
-        require(all.all { it in 0 until n }) { "Hay poses fuera de la hoja" }
+        require(all.all { it in 0 until n }) { tr("Hay poses fuera de la hoja", "Some poses are outside the sheet") }
 
         fun next(vararg p: Pair<Int, Int>) = p.map { Next(it.first, it.second, Only.NONE) }
         val falls = next(FALL to 100)
@@ -117,7 +117,7 @@ object PetMaker {
             Spawn(60, Value("random*(screenW-imageW-50)/100+25"), Value("-imageH-20"), WALK),
         )
         val header = Header(author = author, title = name, petName = name, version = "1.0",
-            info = "Creada con Mascotas en pantalla a partir de un dibujo.")
+            info = tr("Creada con Mascotas en pantalla a partir de un dibujo.", "Created with Mascotas from a drawing."))
         return PetDef(name, tilesX, tilesY, png, "", animations, spawns, emptyMap(), header)
     }
 }

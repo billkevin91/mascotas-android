@@ -51,15 +51,15 @@ class TestActivity : Activity() {
             fitsSystemWindows = true
         }
         col.addView(TextView(this).apply {
-            text = "Probar movimientos"
+            text = tr("Probar movimientos", "Try movements")
             textSize = 22f
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(green)
         })
         col.addView(TextView(this).apply {
-            text = "Mientras estás aquí, tus mascotas se esperan ocultas y sólo se mueve la de prueba. " +
-                "Toca un movimiento y la mascota lo hará encima de esta pantalla. " +
-                "Los que son parte de una escena (como el baño) se ven con la escena entera."
+            text = tr("Mientras estás aquí, tus mascotas se esperan ocultas y sólo se mueve la de prueba. ", "While you're here, your pets wait hidden and only the test pet moves. ") +
+                tr("Toca un movimiento y la mascota lo hará encima de esta pantalla. ", "Tap a movement and the pet will do it on top of this screen. ") +
+                tr("Los que son parte de una escena (como el baño) se ven con la escena entera.", "The ones that are part of a scene (like the bath) are shown with the whole scene.")
             textSize = 14f
             setPadding(0, dp(4), 0, dp(8))
         })
@@ -76,33 +76,33 @@ class TestActivity : Activity() {
         }
         col.addView(spinner)
 
-        loop = CheckBox(this).apply { text = "Repetir el movimiento elegido"; isChecked = true }
+        loop = CheckBox(this).apply { text = tr("Repetir el movimiento elegido", "Repeat the chosen movement"); isChecked = true }
         col.addView(loop)
         col.addView(CheckBox(this).apply {
-            text = "Mostrar el nombre del movimiento encima de la mascota"
+            text = tr("Mostrar el nombre del movimiento encima de la mascota", "Show the movement's name above the pet")
             isChecked = prefs.getBoolean(MainActivity.PREF_NAMES, true)
             prefs.edit().putBoolean(MainActivity.PREF_NAMES, isChecked).apply()
             setOnCheckedChangeListener { _, on -> prefs.edit().putBoolean(MainActivity.PREF_NAMES, on).apply() }
         })
 
-        col.addView(TextView(this).apply { text = "Velocidad de la mascota de prueba"; setPadding(0, dp(6), 0, 0) })
+        col.addView(TextView(this).apply { text = tr("Velocidad de la mascota de prueba", "Speed of the test pet"); setPadding(0, dp(6), 0, 0) })
         col.addView(MainActivity.speedRow(this, MainActivity.PREF_TEST_SPEED))
 
         val buttons = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         buttons.addView(Button(this).apply {
-            text = "Que se mueva sola"
+            text = tr("Que se mueva sola", "Let it move on its own")
             isAllCaps = false
-            setOnClickListener { PetService.play(this@TestActivity, pet, -1, false); status.text = "Se mueve sola otra vez" }
+            setOnClickListener { PetService.play(this@TestActivity, pet, -1, false); status.text = tr("Se mueve sola otra vez", "It moves on its own again") }
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         buttons.addView(Button(this).apply {
-            text = "Quitar la de prueba"
+            text = tr("Quitar la de prueba", "Remove the test pet")
             isAllCaps = false
             setOnClickListener { PetService.testClear(this@TestActivity); status.text = "" }
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         col.addView(buttons)
 
         search = EditText(this).apply {
-            hint = "Buscar (walk, bath, sleep, sonido...)"
+            hint = tr("Buscar (walk, bath, sleep, sonido...)", "Search (walk, bath, sleep, sound...)")
             isSingleLine = true
             addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -124,8 +124,8 @@ class TestActivity : Activity() {
                 return@setOnItemClickListener
             }
             PetService.play(this, pet, m.id, loop.isChecked)
-            status.text = "Haciendo: ${m.id} · ${m.name}" + if (loop.isChecked) " (repitiendo)" else ""
-            if (m.detail.contains("parte de la escena")) status.append(" — se ve la escena entera")
+            status.text = tr("Haciendo: ${m.id} · ${m.name}", "Doing: ${m.id} · ${m.name}") + if (loop.isChecked) tr(" (repitiendo)", " (repeating)") else ""
+            if (m.detail.contains(tr("parte de la escena", "part of the scene"))) status.append(tr(" — se ve la escena entera", " — the whole scene is shown"))
         }
         col.addView(list, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
 
@@ -144,38 +144,38 @@ class TestActivity : Activity() {
     }
 
     private fun load() {
-        status.text = "Cargando movimientos..."
+        status.text = tr("Cargando movimientos...", "Loading movements...")
         val folder = pet
         Thread {
             val def = runCatching { PetLibrary.load(this, folder) }.getOrNull()
             val list = def?.animations?.values?.sortedBy { it.id }?.map { a ->
                 val ms = a.start.interval.constant?.toInt()
                 val parts = ArrayList<String>()
-                parts.add("${a.frames.size} dibujos")
-                if (ms != null) parts.add("cada $ms ms")
+                parts.add(tr("${a.frames.size} dibujos", "${a.frames.size} drawings"))
+                if (ms != null) parts.add(tr("cada $ms ms", "every $ms ms"))
                 val x = a.start.x.constant
-                if (x != null && x != 0.0) parts.add("avanza ${abs(x).toInt()} px")
+                if (x != null && x != 0.0) parts.add(tr("avanza ${abs(x).toInt()} px", "moves ${abs(x).toInt()} px"))
                 val names = def.animations
                 // Avisos para que no parezca que algo está congelado
                 val still = a.frames.distinct().size <= 1 && a.start.x.constant == 0.0 && a.start.y.constant == 0.0 &&
                     a.end.x.constant == 0.0 && a.end.y.constant == 0.0
-                if (a.id == def.kill) parts.add(0, "despedida: se desvanece")
-                else if (still) parts.add(0, "pose quieta")
+                if (a.id == def.kill) parts.add(0, tr("despedida: se desvanece", "goodbye: fades out"))
+                else if (still) parts.add(0, tr("pose quieta", "still pose"))
                 // Aquí el sonido suena siempre (si está encendido); paseando, con su probabilidad
-                def.sounds.firstOrNull { it.animationId == a.id }?.let { parts.add(0, "🔊 sonido (${it.probability} % paseando)") }
+                def.sounds.firstOrNull { it.animationId == a.id }?.let { parts.add(0, tr("🔊 sonido (${it.probability} % paseando)", "🔊 sound (${it.probability} % while walking)")) }
                 val start = def.sceneStart(a.id)
                 val scene = def.scene(start)
                 when {
-                    start != a.id -> parts.add("parte de la escena de ${names[start]?.name}")
-                    scene.size > 1 -> parts.add("escena: " + scene.joinToString(" → ") { names[it]?.name.orEmpty() })
-                    else -> (a.onEnd.firstOrNull()?.let { names[it.id]?.name })?.let { parts.add("luego $it") }
+                    start != a.id -> parts.add(tr("parte de la escena de ${names[start]?.name}", "part of the ${names[start]?.name} scene"))
+                    scene.size > 1 -> parts.add(tr("escena: ", "scene: ") + scene.joinToString(" → ") { names[it]?.name.orEmpty() })
+                    else -> (a.onEnd.firstOrNull()?.let { names[it.id]?.name })?.let { parts.add(tr("luego $it", "then $it")) }
                 }
                 Move(a.id, a.name, parts.joinToString(" · "))
             }.orEmpty()
             runOnUiThread {
                 if (folder != pet) return@runOnUiThread
                 moves = list
-                status.text = "${list.size} movimientos de ${entries.firstOrNull { it.id == folder }?.name ?: folder}"
+                status.text = tr("${list.size} movimientos de ${entries.firstOrNull { it.id == folder }?.name ?: folder}", "${list.size} movements of ${entries.firstOrNull { it.id == folder }?.name ?: folder}")
                 filter()
             }
         }.start()

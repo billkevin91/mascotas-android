@@ -15,3 +15,6 @@ object Lang {
 
     fun t(es: String, en: String) = if (english) en else es
 }
+
+/** Atajo de [Lang.t]: `tr("Guardar", "Save")`. */
+fun tr(es: String, en: String) = Lang.t(es, en)

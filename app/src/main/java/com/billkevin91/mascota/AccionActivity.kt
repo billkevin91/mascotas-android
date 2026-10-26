@@ -30,7 +30,7 @@ class AccionActivity : Activity() {
                         ?: PetLibrary.BUNDLED.first()
                     PetService.add(this, pet, prefs.getFloat(MainActivity.PREF_SIZE, 1f))
                 } else {
-                    Toast.makeText(this, "Primero da permiso para mostrarse sobre otras apps", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, tr("Primero da permiso para mostrarse sobre otras apps", "First allow it to display over other apps"), Toast.LENGTH_LONG).show()
                     startActivity(Intent(this, MainActivity::class.java))
                 }
             }

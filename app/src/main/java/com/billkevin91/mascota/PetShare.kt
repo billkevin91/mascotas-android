@@ -56,7 +56,7 @@ object PetShare {
     }
 
     fun saveTo(context: Context, id: String, uri: Uri) {
-        val out = requireNotNull(context.contentResolver.openOutputStream(uri)) { "No se pudo escribir ahí" }
+        val out = requireNotNull(context.contentResolver.openOutputStream(uri)) { tr("No se pudo escribir ahí", "Couldn't write there") }
         out.use { o -> PetLibrary.open(context, id).use { it.copyTo(o) } }
     }
 }

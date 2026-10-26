@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Inglés, para todos los idiomas menos el español (values-es). -->
 <resources>
     <string name="app_name">Mascotas</string>
-    <string name="atajo_comer">Dar de comer</string>
-    <string name="atajo_otra">Otra mascota</string>
-    <string name="widget_soltar">🐑 Soltar</string>
-    <string name="widget_comida">🍪 Comida</string>
-    <string name="widget_quitar">✖ Quitar</string>
-    <string name="widget_descripcion">Suelta una mascota, dales de comer o quítalas sin abrir la app</string>
+    <string name="atajo_comer">Feed them</string>
+    <string name="atajo_otra">Another pet</string>
+    <string name="widget_soltar">🐑 Release</string>
+    <string name="widget_comida">🍪 Food</string>
+    <string name="widget_quitar">✖ Remove</string>
+    <string name="widget_descripcion">Release a pet, feed them or remove them without opening the app</string>
+    <string name="titulo_probar">Try movements</string>
+    <string name="titulo_editar">Edit pets</string>
+    <string name="titulo_crear">Create a pet</string>
+    <string name="titulo_ajustes">Settings</string>
 </resources>

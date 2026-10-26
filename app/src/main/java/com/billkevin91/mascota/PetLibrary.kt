@@ -22,8 +22,8 @@ object PetLibrary {
     /** Carpetas en assets/pets (mascotas de desktopPet). */
     val BUNDLED = listOf("esheep64", "blue_sheep", "pink_sheep", "neko", "pink_neko", "fox", "pink_fox")
     private val NAMES = mapOf(
-        "esheep64" to "eSheep", "blue_sheep" to "Oveja azul", "pink_sheep" to "Oveja rosa",
-        "neko" to "Neko", "pink_neko" to "Neko rosa", "fox" to "Zorrito", "pink_fox" to "Zorrito rosa",
+        "esheep64" to "eSheep", "blue_sheep" to tr("Oveja azul", "Blue sheep"), "pink_sheep" to tr("Oveja rosa", "Pink sheep"),
+        "neko" to "Neko", "pink_neko" to tr("Neko rosa", "Pink Neko"), "fox" to tr("Zorrito", "Fox"), "pink_fox" to tr("Zorrito rosa", "Pink fox"),
     )
     private const val USER = "user:"
 
@@ -64,12 +64,12 @@ object PetLibrary {
         val def = try {
             PetDef.parse(bytes.inputStream())
         } catch (e: Exception) {
-            throw IllegalArgumentException("No es un animations.xml de desktopPet (${e.message})")
+            throw IllegalArgumentException(tr("No es un animations.xml de desktopPet (${e.message})", "It's not a desktopPet animations.xml (${e.message})"))
         }
-        require(def.animations.isNotEmpty()) { "El archivo no tiene movimientos" }
+        require(def.animations.isNotEmpty()) { tr("El archivo no tiene movimientos", "The file has no movements") }
         val sheet = try { sheet(def) } catch (e: Exception) { null }
-        requireNotNull(sheet) { "No se pudo leer la imagen de la mascota" }
-        require(sheet.width >= def.tilesX && sheet.height >= def.tilesY) { "La imagen es más pequeña que su cuadrícula de dibujos" }
+        requireNotNull(sheet) { tr("No se pudo leer la imagen de la mascota", "Couldn't read the pet's image") }
+        require(sheet.width >= def.tilesX && sheet.height >= def.tilesY) { tr("La imagen es más pequeña que su cuadrícula de dibujos", "The image is smaller than its drawing grid") }
         val name = def.header.petName.ifEmpty { def.title }.trim().ifEmpty { "Mascota" }
         // Si ya hay una importada con el mismo nombre, se reemplaza (no se duplica)
         val existing = all(context).firstOrNull { !it.bundled && it.name.equals(name, ignoreCase = true) }
@@ -121,7 +121,7 @@ object PetLibrary {
     fun sheet(def: PetDef): Bitmap {
         val bytes = Base64.decode(def.png.filterNot { it.isWhitespace() }, Base64.DEFAULT)
         val opts = BitmapFactory.Options().apply { inMutable = true; inPreferredConfig = Bitmap.Config.ARGB_8888 }
-        val bmp = requireNotNull(BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)) { "imagen no válida" }
+        val bmp = requireNotNull(BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)) { tr("imagen no válida", "invalid image") }
         val key = transparentColor(def.transparency) ?: return bmp
         val px = IntArray(bmp.width * bmp.height)
         bmp.getPixels(px, 0, bmp.width, 0, 0, bmp.width, bmp.height)

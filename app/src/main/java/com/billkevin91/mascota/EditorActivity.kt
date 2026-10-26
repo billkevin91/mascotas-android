@@ -85,13 +85,13 @@ class EditorActivity : Activity() {
             setPadding(dp(16), dp(12), dp(16), dp(24))
         }
         col.addView(TextView(this).apply {
-            text = "Editar mascotas"
+            text = tr("Editar mascotas", "Edit pets")
             textSize = 22f
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(green)
         })
-        col.addView(small("Cambia cómo se mueve tu mascota y pruébalo al momento. Las que vienen con la app " +
-            "se guardan como una copia tuya (la original no cambia). Mientras estás aquí, tus mascotas se esperan ocultas."))
+        col.addView(small(tr("Cambia cómo se mueve tu mascota y pruébalo al momento. Las que vienen con la app ", "Change how your pet moves and try it right away. The ones that come with the app ") +
+            tr("se guardan como una copia tuya (la original no cambia). Mientras estás aquí, tus mascotas se esperan ocultas.", "are saved as your own copy (the original doesn't change). While you're here, your pets wait hidden.")))
 
         petSpinner = Spinner(this)
         petSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, entries.map { it.name })
@@ -100,47 +100,47 @@ class EditorActivity : Activity() {
             val chosen = entries[pos].id
             if (chosen != petId || def == null) askDiscard { petId = chosen; load() }
         }
-        col.addView(label("Mascota"))
+        col.addView(label(tr("Mascota", "Pet")))
         col.addView(petSpinner)
 
-        col.addView(label("Nombre"))
+        col.addView(label(tr("Nombre", "Name")))
         nameEdit = EditText(this).apply { isSingleLine = true }
         col.addView(nameEdit)
 
-        col.addView(label("Movimiento"))
+        col.addView(label(tr("Movimiento", "Movement")))
         animSpinner = Spinner(this)
         col.addView(animSpinner)
 
-        col.addView(label("Dibujos de este movimiento (toca uno para quitarlo)"))
+        col.addView(label(tr("Dibujos de este movimiento (toca uno para quitarlo)", "Drawings in this movement (tap one to remove it)")))
         sequence = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         col.addView(HorizontalScrollView(this).apply { addView(sequence) })
 
-        col.addView(label("Toca un dibujo de la hoja para añadirlo al final"))
+        col.addView(label(tr("Toca un dibujo de la hoja para añadirlo al final", "Tap a drawing on the sheet to add it at the end")))
         tiles = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         col.addView(HorizontalScrollView(this).apply { addView(tiles) })
 
-        col.addView(label("Velocidad: milisegundos por dibujo (menos = más rápido)"))
+        col.addView(label(tr("Velocidad: milisegundos por dibujo (menos = más rápido)", "Speed: milliseconds per drawing (less = faster)")))
         startMs = number(); endMs = number()
-        col.addView(pair("al empezar", startMs, "al terminar", endMs))
+        col.addView(pair(tr("al empezar", "at the start"), startMs, tr("al terminar", "at the end"), endMs))
 
-        col.addView(label("Cuánto avanza en cada paso (horizontal: negativo = hacia donde mira)"))
+        col.addView(label(tr("Cuánto avanza en cada paso (horizontal: negativo = hacia donde mira)", "How far it moves each step (horizontal: negative = the way it faces)")))
         startX = expr(); endX = expr()
-        col.addView(pair("al empezar", startX, "al terminar", endX))
-        col.addView(label("Cuánto baja en cada paso (negativo = sube)"))
+        col.addView(pair(tr("al empezar", "at the start"), startX, tr("al terminar", "at the end"), endX))
+        col.addView(label(tr("Cuánto baja en cada paso (negativo = sube)", "How far it drops each step (negative = goes up)")))
         startY = expr(); endY = expr()
-        col.addView(pair("al empezar", startY, "al terminar", endY))
+        col.addView(pair(tr("al empezar", "at the start"), startY, tr("al terminar", "at the end"), endY))
 
-        col.addView(label("Repeticiones"))
+        col.addView(label(tr("Repeticiones", "Repeats")))
         repeat = expr(); repeatFrom = number()
-        col.addView(pair("veces", repeat, "desde el dibujo nº", repeatFrom))
-        col.addView(small("Admiten fórmulas como en desktopPet, por ejemplo 5+random/10 (random va de 0 a 99)."))
+        col.addView(pair(tr("veces", "times"), repeat, tr("desde el dibujo nº", "from drawing no."), repeatFrom))
+        col.addView(small(tr("Admiten fórmulas como en desktopPet, por ejemplo 5+random/10 (random va de 0 a 99).", "Formulas work as in desktopPet, e.g. 5+random/10 (random goes from 0 to 99).")))
 
-        val toggle = Button(this).apply { text = "Opciones avanzadas ▾"; isAllCaps = false }
+        val toggle = Button(this).apply { text = tr("Opciones avanzadas ▾", "Advanced options ▾"); isAllCaps = false }
         advancedBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
         toggle.setOnClickListener {
             val show = advancedBox.visibility != View.VISIBLE
             advancedBox.visibility = if (show) View.VISIBLE else View.GONE
-            toggle.text = if (show) "Opciones avanzadas ▴" else "Opciones avanzadas ▾"
+            toggle.text = if (show) tr("Opciones avanzadas ▴", "Advanced options ▴") else tr("Opciones avanzadas ▾", "Advanced options ▾")
         }
         col.addView(toggle)
         col.addView(advancedBox)
@@ -151,30 +151,30 @@ class EditorActivity : Activity() {
         col.addView(status)
         val buttons = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         buttons.addView(Button(this).apply {
-            text = "Guardar y probar"
+            text = tr("Guardar y probar", "Save and try")
             isAllCaps = false
             setTextColor(Color.WHITE)
             background = GradientDrawable().apply { setColor(green); cornerRadius = dp(10).toFloat() }
             setOnClickListener { save(test = true) }
         }, LinearLayout.LayoutParams(0, dp(52), 1f).apply { setMargins(0, 0, dp(6), 0) })
         buttons.addView(Button(this).apply {
-            text = "Guardar"
+            text = tr("Guardar", "Save")
             isAllCaps = false
             setOnClickListener { save(test = false) }
         }, LinearLayout.LayoutParams(0, dp(52), 1f))
         col.addView(buttons)
         val shareRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         shareRow.addView(Button(this).apply {
-            text = "Compartir"; isAllCaps = false
+            text = tr("Compartir", "Share"); isAllCaps = false
             setOnClickListener { if (savedFirst()) runCatching { PetShare.share(this@EditorActivity, petId) } }
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         shareRow.addView(Button(this).apply {
-            text = "Guardar como archivo"; isAllCaps = false
+            text = tr("Guardar como archivo", "Save as file"); isAllCaps = false
             setOnClickListener { if (savedFirst()) PetShare.askWhere(this@EditorActivity, petId) }
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         col.addView(shareRow)
         col.addView(Button(this).apply {
-            text = "Deshacer los cambios sin guardar"
+            text = tr("Deshacer los cambios sin guardar", "Undo unsaved changes")
             isAllCaps = false
             setOnClickListener { dirty = false; showAnimation(animId) }
         })
@@ -205,14 +205,14 @@ class EditorActivity : Activity() {
     private var filling = false
 
     private fun load() {
-        status.text = "Cargando..."
+        status.text = tr("Cargando...", "Loading...")
         val id = petId
         Thread {
             val d = runCatching { PetLibrary.load(this, id) }.getOrNull()
             val s = d?.let { runCatching { PetLibrary.sheet(it) }.getOrNull() }
             runOnUiThread {
                 if (id != petId) return@runOnUiThread
-                if (d == null || s == null) { status.text = "No se pudo abrir esta mascota"; return@runOnUiThread }
+                if (d == null || s == null) { status.text = tr("No se pudo abrir esta mascota", "Couldn't open this pet"); return@runOnUiThread }
                 def = d
                 sheet = s
                 dirty = false
@@ -262,22 +262,22 @@ class EditorActivity : Activity() {
 
     /** Dónde tiene que estar para que valga ese "siguiente" (atributo only de desktopPet). */
     private val places = listOf(
-        Only.NONE to "siempre", Only.TASKBAR to "en el suelo", Only.VERTICAL to "en una pared",
-        Only.HORIZONTAL to "en el techo", Only.PET_SIDE to "junto a otra mascota",
-        Only.HORIZONTAL_PLUS to "techo o suelo", Only.VERTICAL_PLUS to "pared o mascota",
-        Only.WINDOW to "sobre una ventana", Only.WINDOW_SIDE to "junto a una ventana",
+        Only.NONE to tr("siempre", "always"), Only.TASKBAR to tr("en el suelo", "on the floor"), Only.VERTICAL to tr("en una pared", "on a wall"),
+        Only.HORIZONTAL to tr("en el techo", "on the ceiling"), Only.PET_SIDE to tr("junto a otra mascota", "next to another pet"),
+        Only.HORIZONTAL_PLUS to tr("techo o suelo", "ceiling or floor"), Only.VERTICAL_PLUS to tr("pared o mascota", "wall or pet"),
+        Only.WINDOW to tr("sobre una ventana", "on a window"), Only.WINDOW_SIDE to tr("junto a una ventana", "next to a window"),
     )
 
     private fun showAdvanced() {
         val d = def ?: return
         advancedBox.removeAllViews()
-        advancedBox.addView(small("La probabilidad es un peso: con 30 y 10, el primero sale 3 de cada 4 veces. " +
-            "\"Dónde\" dice cuándo vale: por ejemplo, \"en el suelo\" sólo si ha terminado pisando el suelo."))
-        nextList("Al terminar, pasa a", onEnd)
-        nextList("Al chocar con un borde o con otra mascota, pasa a", onBorder)
-        nextList("Si se queda sin suelo, pasa a", onGravity)
+        advancedBox.addView(small(tr("La probabilidad es un peso: con 30 y 10, el primero sale 3 de cada 4 veces. ", "Probability is a weight: with 30 and 10, the first one happens 3 times out of 4. ") +
+            tr("\"Dónde\" dice cuándo vale: por ejemplo, \"en el suelo\" sólo si ha terminado pisando el suelo.", "\"Where\" says when it applies: for example, \"on the floor\" only if it ended up standing on the floor.")))
+        nextList(tr("Al terminar, pasa a", "When it ends, goes to"), onEnd)
+        nextList(tr("Al chocar con un borde o con otra mascota, pasa a", "When it hits an edge or another pet, goes to"), onBorder)
+        nextList(tr("Si se queda sin suelo, pasa a", "If it runs out of floor, goes to"), onGravity)
 
-        advancedBox.addView(label("Crías (aparecen al empezar este movimiento: la tina, una flor...)"))
+        advancedBox.addView(label(tr("Crías (aparecen al empezar este movimiento: la tina, una flor...)", "Offspring (they appear when this movement starts: the tub, a flower...)")))
         kids.forEachIndexed { i, c ->
             val x = expr().apply { setText(c.x.text) }
             val y = expr().apply { setText(c.y.text) }
@@ -288,17 +288,17 @@ class EditorActivity : Activity() {
             }
             watch(x) { update() }; watch(y) { update() }
             next.onItemSelectedListener = listener { if (animAt(it) != kids[i].next) update() }
-            advancedBox.addView(pair("x (imageX = la madre)", x, "y (imageY = la madre)", y))
+            advancedBox.addView(pair(tr("x (imageX = la madre)", "x (imageX = the parent)"), x, tr("y (imageY = la madre)", "y (imageY = the parent)"), y))
             advancedBox.addView(row(next, remove { kids.removeAt(i); dirty = true; showAdvanced() }))
         }
         advancedBox.addView(Button(this).apply {
-            text = "+ Añadir cría"; isAllCaps = false
+            text = tr("+ Añadir cría", "+ Add offspring"); isAllCaps = false
             setOnClickListener { kids.add(ChildDef(Value("imageX"), Value("imageY"), animId)); dirty = true; showAdvanced() }
         })
 
-        advancedBox.addView(label("Sonido al empezar este movimiento"))
+        advancedBox.addView(label(tr("Sonido al empezar este movimiento", "Sound when this movement starts")))
         val s = sound
-        advancedBox.addView(small(if (s == null) "Sin sonido" else "Tiene sonido (${s.base64.length * 3 / 4 / 1024} KB)"))
+        advancedBox.addView(small(if (s == null) tr("Sin sonido", "No sound") else tr("Tiene sonido (${s.base64.length * 3 / 4 / 1024} KB)", "Has a sound (${s.base64.length * 3 / 4 / 1024} KB)")))
         if (s != null) {
             val prob = number().apply { setText(s.probability.toString()) }
             val loops = number().apply { setText(s.loop.toString()) }
@@ -307,29 +307,29 @@ class EditorActivity : Activity() {
                 soundChanged = true; dirty = true
             }
             watch(prob) { update() }; watch(loops) { update() }
-            advancedBox.addView(pair("probabilidad (%)", prob, "repeticiones", loops))
+            advancedBox.addView(pair(tr("probabilidad (%)", "probability (%)"), prob, tr("repeticiones", "repeats"), loops))
         }
         val soundButtons = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         soundButtons.addView(Button(this).apply {
-            text = if (s == null) "Elegir sonido" else "Cambiar"; isAllCaps = false
+            text = if (s == null) tr("Elegir sonido", "Choose sound") else tr("Cambiar", "Change"); isAllCaps = false
             setOnClickListener {
                 startActivityForResult(Intent(Intent.ACTION_GET_CONTENT).setType("audio/*").addCategory(Intent.CATEGORY_OPENABLE), PICK_SOUND)
             }
         })
         if (s != null) {
-            soundButtons.addView(Button(this).apply { text = "Escuchar"; isAllCaps = false; setOnClickListener { listen(s) } })
+            soundButtons.addView(Button(this).apply { text = tr("Escuchar", "Listen"); isAllCaps = false; setOnClickListener { listen(s) } })
             soundButtons.addView(Button(this).apply {
-                text = "Quitar"; isAllCaps = false
+                text = tr("Quitar", "Remove"); isAllCaps = false
                 setOnClickListener { sound = null; soundChanged = true; dirty = true; showAdvanced() }
             })
         }
         advancedBox.addView(soundButtons)
 
-        advancedBox.addView(label("De la mascota"))
-        advancedBox.addView(TextView(this).apply { text = "Autor"; textSize = 12f })
+        advancedBox.addView(label(tr("De la mascota", "About the pet")))
+        advancedBox.addView(TextView(this).apply { text = tr("Autor", "Author"); textSize = 12f })
         (author.parent as? LinearLayout)?.removeView(author)
         advancedBox.addView(author)
-        advancedBox.addView(TextView(this).apply { text = "Descripción"; textSize = 12f })
+        advancedBox.addView(TextView(this).apply { text = tr("Descripción", "Description"); textSize = 12f })
         (info.parent as? LinearLayout)?.removeView(info)
         advancedBox.addView(info)
     }
@@ -354,14 +354,14 @@ class EditorActivity : Activity() {
             advancedBox.addView(row(anim, remove { list.removeAt(i); dirty = true; showAdvanced() }))
             advancedBox.addView(LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
-                addView(TextView(this@EditorActivity).apply { text = "probabilidad "; textSize = 12f })
+                addView(TextView(this@EditorActivity).apply { text = tr("probabilidad ", "probability "); textSize = 12f })
                 addView(prob, LinearLayout.LayoutParams(dp(72), LinearLayout.LayoutParams.WRAP_CONTENT))
-                addView(TextView(this@EditorActivity).apply { text = "  dónde "; textSize = 12f })
+                addView(TextView(this@EditorActivity).apply { text = tr("  dónde ", "  where "); textSize = 12f })
                 addView(place, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
             })
         }
         advancedBox.addView(Button(this).apply {
-            text = "+ Añadir"; isAllCaps = false
+            text = tr("+ Añadir", "+ Add"); isAllCaps = false
             setOnClickListener { list.add(Next(animId, 10, Only.NONE)); dirty = true; showAdvanced() }
         })
     }
@@ -399,7 +399,7 @@ class EditorActivity : Activity() {
             val f = java.io.File(cacheDir, "escuchar")
             f.writeBytes(android.util.Base64.decode(s.base64.substringAfter(";base64,"), android.util.Base64.DEFAULT))
             player = android.media.MediaPlayer().apply { setDataSource(f.path); prepare(); start() }
-        }.onFailure { Toast.makeText(this, "No se pudo reproducir", Toast.LENGTH_SHORT).show() }
+        }.onFailure { Toast.makeText(this, tr("No se pudo reproducir", "Couldn't play it"), Toast.LENGTH_SHORT).show() }
     }
 
     @Deprecated("Deprecated in Java")
@@ -408,15 +408,15 @@ class EditorActivity : Activity() {
         if (requestCode == PetShare.SAVE_REQUEST && resultCode == RESULT_OK) {
             val uri = data?.data ?: return
             val ok = runCatching { PetShare.saveTo(this, petId, uri) }.isSuccess
-            Toast.makeText(this, if (ok) "Guardada" else "No se pudo guardar", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, if (ok) tr("Guardada", "Saved") else tr("No se pudo guardar", "Couldn't save"), Toast.LENGTH_SHORT).show()
             return
         }
         if (requestCode != PICK_SOUND || resultCode != RESULT_OK) return
         val uri = data?.data ?: return
         val bytes = runCatching { contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
-        if (bytes == null || bytes.isEmpty()) { Toast.makeText(this, "No se pudo leer el sonido", Toast.LENGTH_SHORT).show(); return }
+        if (bytes == null || bytes.isEmpty()) { Toast.makeText(this, tr("No se pudo leer el sonido", "Couldn't read the sound"), Toast.LENGTH_SHORT).show(); return }
         val b64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
-        if (b64.length > PetEdit.MAX_SOUND) { Toast.makeText(this, "Es demasiado largo (máximo ~1,5 MB)", Toast.LENGTH_LONG).show(); return }
+        if (b64.length > PetEdit.MAX_SOUND) { Toast.makeText(this, tr("Es demasiado largo (máximo ~1,5 MB)", "It's too long (max ~1.5 MB)"), Toast.LENGTH_LONG).show(); return }
         sound = Sound(animId, sound?.probability ?: 100, sound?.loop ?: 0, b64)
         soundChanged = true
         dirty = true
@@ -438,7 +438,7 @@ class EditorActivity : Activity() {
                 addView(TextView(this@EditorActivity).apply { text = "$i: $fr"; textSize = 11f; gravity = Gravity.CENTER })
                 setOnClickListener {
                     if (frames.size > 1) { frames.removeAt(i); dirty = true; showSequence() }
-                    else Toast.makeText(this@EditorActivity, "Tiene que quedar al menos un dibujo", Toast.LENGTH_SHORT).show()
+                    else Toast.makeText(this@EditorActivity, tr("Tiene que quedar al menos un dibujo", "At least one drawing must remain"), Toast.LENGTH_SHORT).show()
                 }
             })
         }
@@ -498,16 +498,16 @@ class EditorActivity : Activity() {
             repeatFrom = repeatFrom.text.toString().trim().toIntOrNull() ?: -1,
         )
         PetEdit.check(d, f)?.let { msg ->
-            AlertDialog.Builder(this).setTitle("Revisa los datos").setMessage(msg).setPositiveButton("Vale", null).show()
+            AlertDialog.Builder(this).setTitle(tr("Revisa los datos", "Check the values")).setMessage(msg).setPositiveButton(tr("Vale", "OK"), null).show()
             return
         }
         val entry = entries.first { it.id == petId }
         var name = nameEdit.text.toString().trim().ifEmpty { entry.name }
         // Las incluidas se guardan como copia tuya (con otro nombre para no confundirlas)
-        if (entry.bundled && name == entry.name) name = "${entry.name} (mía)"
+        if (entry.bundled && name == entry.name) name = tr("${entry.name} (mía)", "${entry.name} (mine)")
         val adv = PetEdit.Advanced(onEnd.toList(), onBorder.toList(), onGravity.toList(), kids.toList(), sound, soundChanged)
         PetEdit.checkAdvanced(d, adv)?.let { msg ->
-            AlertDialog.Builder(this).setTitle("Revisa las opciones avanzadas").setMessage(msg).setPositiveButton("Vale", null).show()
+            AlertDialog.Builder(this).setTitle(tr("Revisa las opciones avanzadas", "Check the advanced options")).setMessage(msg).setPositiveButton(tr("Vale", "OK"), null).show()
             return
         }
         val edited = PetEdit.withInfo(
@@ -518,7 +518,7 @@ class EditorActivity : Activity() {
             // Si ya hay una copia tuya con ese nombre, se guarda encima
             PetLibrary.all(this).firstOrNull { !it.bundled && it.name.equals(name, true) }?.id
         } else petId
-        status.text = "Guardando..."
+        status.text = tr("Guardando...", "Saving...")
         val anim = animId
         Thread {
             val result = runCatching { PetLibrary.save(this, target, edited) }
@@ -536,12 +536,12 @@ class EditorActivity : Activity() {
                     }
                     def = edited
                     soundChanged = false
-                    status.text = "Guardada como \"${e.name}\"" + if (test) ". Mírala en la pantalla." else ""
+                    status.text = tr("Guardada como \"${e.name}\"", "Saved as \"${e.name}\"") + if (test) tr(". Mírala en la pantalla.", ". Watch it on the screen.") else ""
                     if (test) PetService.play(this, e.id, anim, loop = true)
                 }.onFailure { err ->
                     status.text = ""
-                    AlertDialog.Builder(this).setTitle("No se pudo guardar")
-                        .setMessage(err.message ?: err.toString()).setPositiveButton("Vale", null).show()
+                    AlertDialog.Builder(this).setTitle(tr("No se pudo guardar", "Couldn't save"))
+                        .setMessage(err.message ?: err.toString()).setPositiveButton(tr("Vale", "OK"), null).show()
                 }
             }
         }.start()
@@ -549,16 +549,16 @@ class EditorActivity : Activity() {
 
     /** Se comparte lo guardado: si hay cambios sin guardar, avisa. */
     private fun savedFirst(): Boolean {
-        if (dirty) Toast.makeText(this, "Primero guarda los cambios", Toast.LENGTH_SHORT).show()
+        if (dirty) Toast.makeText(this, tr("Primero guarda los cambios", "Save your changes first"), Toast.LENGTH_SHORT).show()
         return !dirty
     }
 
     private fun askDiscard(then: () -> Unit) {
         if (!dirty) { then(); return }
-        AlertDialog.Builder(this).setTitle("Hay cambios sin guardar")
-            .setMessage("Si cambias, se pierden.")
-            .setPositiveButton("Cambiar") { _, _ -> dirty = false; then() }
-            .setNegativeButton("Seguir aquí") { _, _ ->
+        AlertDialog.Builder(this).setTitle(tr("Hay cambios sin guardar", "There are unsaved changes"))
+            .setMessage(tr("Si cambias, se pierden.", "If you switch, they'll be lost."))
+            .setPositiveButton(tr("Cambiar", "Change")) { _, _ -> dirty = false; then() }
+            .setNegativeButton(tr("Seguir aquí", "Stay here")) { _, _ ->
                 // Vuelve a dejar elegido lo que estaba
                 petSpinner.setSelection(entries.indexOfFirst { it.id == petId }.coerceAtLeast(0))
                 def?.animations?.values?.sortedBy { it.id }?.indexOfFirst { it.id == animId }?.let { if (it >= 0) animSpinner.setSelection(it) }

@@ -182,7 +182,7 @@ class PetDef(
             // El lector de Android puede ignorar esas opciones: se comprueba también a mano
             val bytes = input.readBytes()
             val head = String(bytes, 0, minOf(bytes.size, 4096), Charsets.ISO_8859_1)
-            require("<!DOCTYPE" !in head && "<!ENTITY" !in head) { "el archivo usa DOCTYPE/ENTITY, que no se admiten" }
+            require("<!DOCTYPE" !in head && "<!ENTITY" !in head) { tr("el archivo usa DOCTYPE/ENTITY, que no se admiten", "the file uses DOCTYPE/ENTITY, which are not allowed") }
             val doc = factory.newDocumentBuilder().parse(bytes.inputStream())
             val root = doc.documentElement
             val header = root.kid("header")
@@ -230,7 +230,7 @@ class PetDef(
             val title = header?.text("title")?.ifEmpty { null } ?: "Mascota"
             val tilesX = image.text("tilesx").toInt()
             val tilesY = image.text("tilesy").toInt()
-            require(tilesX in 1..1000 && tilesY in 1..1000) { "cuadrícula de dibujos no válida ($tilesX x $tilesY)" }
+            require(tilesX in 1..1000 && tilesY in 1..1000) { tr("cuadrícula de dibujos no válida ($tilesX x $tilesY)", "invalid drawing grid ($tilesX x $tilesY)") }
             return PetDef(
                 title = title,
                 tilesX = tilesX,
@@ -293,7 +293,7 @@ class Expr private constructor(private val s: String, private val vars: (String)
             val e = Expr(text, vars)
             val v = e.sum()
             e.skip()
-            require(e.i >= e.s.length) { "Expresión inválida: $text" }
+            require(e.i >= e.s.length) { tr("Expresión inválida: $text", "Invalid expression: $text") }
             return v
         }
     }
@@ -339,10 +339,10 @@ class Expr private constructor(private val s: String, private val vars: (String)
 
     private fun atom(): Double {
         skip()
-        require(i < s.length) { "Expresión incompleta: $s" }
+        require(i < s.length) { tr("Expresión incompleta: $s", "Incomplete expression: $s") }
         if (eat('(')) {
             val v = sum()
-            require(eat(')')) { "Falta ')': $s" }
+            require(eat(')')) { tr("Falta ')': $s", "Missing ')': $s") }
             return v
         }
         val c = s[i]
@@ -351,7 +351,7 @@ class Expr private constructor(private val s: String, private val vars: (String)
             while (i < s.length && (s[i].isDigit() || s[i] == '.')) i++
             return s.substring(start, i).toDouble()
         }
-        require(c.isLetter() || c == '_') { "Carácter inesperado '$c': $s" }
+        require(c.isLetter() || c == '_') { tr("Carácter inesperado '$c': $s", "Unexpected character '$c': $s") }
         val start = i
         while (i < s.length && (s[i].isLetterOrDigit() || s[i] == '_' || s[i] == '.')) i++
         val name = s.substring(start, i)
@@ -372,7 +372,7 @@ class Expr private constructor(private val s: String, private val vars: (String)
                         args.add(sum())
                     }
                 } while (eat(','))
-                require(eat(')')) { "Falta ')': $s" }
+                require(eat(')')) { tr("Falta ')': $s", "Missing ')': $s") }
             }
             return when (name.lowercase()) {
                 "convert" -> Math.rint(args.firstOrNull() ?: 0.0)

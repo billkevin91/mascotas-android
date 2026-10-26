@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Español. Los demás idiomas usan values/strings.xml (inglés), igual que Lang.kt en el código. -->
+<resources>
+    <string name="app_name">Mascotas</string>
+    <string name="atajo_comer">Dar de comer</string>
+    <string name="atajo_otra">Otra mascota</string>
+    <string name="widget_soltar">🐑 Soltar</string>
+    <string name="widget_comida">🍪 Comida</string>
+    <string name="widget_quitar">✖ Quitar</string>
+    <string name="widget_descripcion">Suelta una mascota, dales de comer o quítalas sin abrir la app</string>
+    <string name="titulo_probar">Probar movimientos</string>
+    <string name="titulo_editar">Editar mascotas</string>
+    <string name="titulo_crear">Crear mascota</string>
+    <string name="titulo_ajustes">Ajustes</string>
+</resources>

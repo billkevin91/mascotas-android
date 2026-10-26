@@ -175,6 +175,17 @@ if [ -z "$compartido" ] || [ "$menu" -lt 1 ]; then echo "::error::No se pudo com
 adb shell input keyevent KEYCODE_BACK
 adb shell input keyevent KEYCODE_HOME
 sleep 2
+# Idioma: el emulador está en inglés, así que la app tiene que salir en inglés
+adb shell am start -n $PKG/.MainActivity -f 0x10008000
+sleep 3
+adb shell uiautomator dump /sdcard/ui.xml > /dev/null
+adb shell cat /sdcard/ui.xml > shots/pantalla_principal.xml
+ingles=$(grep -c "Choose your pet" shots/pantalla_principal.xml)
+espanol=$(grep -c "Elige tu mascota" shots/pantalla_principal.xml)
+echo "::notice title=Idioma::texto en inglés: $ingles, en español: $espanol"
+if [ "$ingles" -lt 1 ] || [ "$espanol" -ne 0 ]; then echo "::error::La pantalla principal no está en inglés"; fail=1; fi
+adb shell input keyevent KEYCODE_HOME
+sleep 2
 # El widget está registrado
 widget=$(adb shell dumpsys appwidget | grep -c "MascotasWidget")
 echo "::notice title=Widget::registrado $widget veces en dumpsys appwidget"

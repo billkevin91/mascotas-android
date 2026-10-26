@@ -379,7 +379,7 @@ class PetService : Service() {
     private fun startInForeground() {
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= 26) {
-            nm.createNotificationChannel(NotificationChannel(CHANNEL, "Mascotas en pantalla", NotificationManager.IMPORTANCE_LOW))
+            nm.createNotificationChannel(NotificationChannel(CHANNEL, tr("Mascotas en pantalla", "Mascotas: pets on your screen"), NotificationManager.IMPORTANCE_LOW))
         }
         val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), flags)
@@ -390,13 +390,13 @@ class PetService : Service() {
         val builder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(this, CHANNEL) else Notification.Builder(this)
         val n = builder
             .setSmallIcon(R.drawable.ic_stat_pet)
-            .setContentTitle("Tus mascotas están paseando")
-            .setContentText("Arrástralas, lánzalas o tócalas dos veces para despedirlas")
+            .setContentTitle(tr("Tus mascotas están paseando", "Your pets are out for a walk"))
+            .setContentText(tr("Arrástralas, lánzalas o tócalas dos veces para despedirlas", "Drag them, throw them or double-tap to say goodbye"))
             .setContentIntent(open)
             .setOngoing(true)
-            .addAction(Notification.Action.Builder(null as Icon?, "Otra más", more).build())
-            .addAction(Notification.Action.Builder(null as Icon?, "Quitar todas", clear).build())
-            .addAction(Notification.Action.Builder(null as Icon?, if (soundOn) "🔊 Sonido: sí" else "🔇 Sonido: no", sound).build())
+            .addAction(Notification.Action.Builder(null as Icon?, tr("Otra más", "One more"), more).build())
+            .addAction(Notification.Action.Builder(null as Icon?, tr("Quitar todas", "Remove all"), clear).build())
+            .addAction(Notification.Action.Builder(null as Icon?, if (soundOn) tr("🔊 Sonido: sí", "🔊 Sound: on") else tr("🔇 Sonido: no", "🔇 Sound: off"), sound).build())
             .build()
         if (Build.VERSION.SDK_INT >= 34) {
             startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)

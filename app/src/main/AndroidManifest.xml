@@ -40,24 +40,25 @@
             android:name=".TestActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
             android:exported="false"
-            android:label="Probar movimientos" />
+            android:label="@string/titulo_probar" />
 
         <activity
             android:name=".EditorActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
             android:exported="false"
-            android:label="Editar mascotas"
+            android:label="@string/titulo_editar"
             android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".SettingsActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:label="@string/titulo_ajustes" />
 
         <activity
             android:name=".MakerActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
             android:exported="false"
-            android:label="Crear mascota" />
+            android:label="@string/titulo_crear" />
 
         <!-- Compartir el animations.xml de una mascota con otra app (sólo lectura, sólo ese archivo) -->
         <provider

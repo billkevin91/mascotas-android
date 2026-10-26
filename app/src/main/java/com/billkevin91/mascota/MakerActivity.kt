@@ -80,15 +80,15 @@ class MakerActivity : Activity() {
             setPadding(dp(16), dp(12), dp(16), dp(24))
         }
         col.addView(TextView(this).apply {
-            text = "Crear mascota desde un dibujo"
+            text = tr("Crear mascota desde un dibujo", "Create a pet from a drawing")
             textSize = 22f
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(green)
         })
-        col.addView(small("Elige un dibujo tuyo (una foto de un papel, un dibujo de una app...). Con un solo dibujo, " +
-            "la app inventa sus poses: dar pasos, saltar, tumbarse a dormir... Si tienes varios dibujos en una hoja " +
-            "(en cuadrícula), usa los tuyos: la primera fila para caminar, el primero de pie y el último para dormir."))
-        col.addView(button("Elegir imagen") {
+        col.addView(small(tr("Elige un dibujo tuyo (una foto de un papel, un dibujo de una app...). Con un solo dibujo, ", "Choose one of your drawings (a photo of paper, a drawing from an app...). With a single drawing, ") +
+            tr("la app inventa sus poses: dar pasos, saltar, tumbarse a dormir... Si tienes varios dibujos en una hoja ", "the app invents its poses: stepping, hopping, lying down to sleep... If you have several drawings on a sheet ") +
+            tr("(en cuadrícula), usa los tuyos: la primera fila para caminar, el primero de pie y el último para dormir.", "(in a grid), it uses yours: the first row to walk, the first one standing and the last one to sleep.")))
+        col.addView(button(tr("Elegir imagen", "Choose image")) {
             startActivityForResult(Intent(Intent.ACTION_GET_CONTENT).setType("image/*").addCategory(Intent.CATEGORY_OPENABLE), PICK)
         })
 
@@ -102,8 +102,8 @@ class MakerActivity : Activity() {
             setMargins(0, dp(8), 0, dp(8))
         })
 
-        single = RadioButton(this).apply { text = "Es un solo dibujo"; id = View.generateViewId(); isChecked = true }
-        val grid = RadioButton(this).apply { text = "Es una hoja con varios dibujos"; id = View.generateViewId() }
+        single = RadioButton(this).apply { text = tr("Es un solo dibujo", "It's a single drawing"); id = View.generateViewId(); isChecked = true }
+        val grid = RadioButton(this).apply { text = tr("Es una hoja con varios dibujos", "It's a sheet with several drawings"); id = View.generateViewId() }
         col.addView(RadioGroup(this).apply {
             addView(single); addView(grid)
             setOnCheckedChangeListener { _, _ -> gridRow.visibility = if (single.isChecked) View.GONE else View.VISIBLE; refresh() }
@@ -112,32 +112,32 @@ class MakerActivity : Activity() {
         gridRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             visibility = View.GONE
-            addView(TextView(this@MakerActivity).apply { text = "Columnas " })
+            addView(TextView(this@MakerActivity).apply { text = tr("Columnas ", "Columns ") })
             addView(cols, LinearLayout.LayoutParams(dp(64), LinearLayout.LayoutParams.WRAP_CONTENT))
-            addView(TextView(this@MakerActivity).apply { text = "  Filas " })
+            addView(TextView(this@MakerActivity).apply { text = tr("  Filas ", "  Rows ") })
             addView(rows, LinearLayout.LayoutParams(dp(64), LinearLayout.LayoutParams.WRAP_CONTENT))
-            addView(button("Ver") { refresh() })
+            addView(button(tr("Ver", "View")) { refresh() })
         }
         col.addView(gridRow)
         removeBg = CheckBox(this).apply {
-            text = "Quitar el fondo (el color de las esquinas)"
+            text = tr("Quitar el fondo (el color de las esquinas)", "Remove the background (the color of the corners)")
             isChecked = true
             setOnCheckedChangeListener { _, _ -> refresh() }
         }
         col.addView(removeBg)
         facingRight = CheckBox(this).apply {
-            text = "Mi dibujo mira a la derecha"
+            text = tr("Mi dibujo mira a la derecha", "My drawing faces right")
             setOnCheckedChangeListener { _, _ -> refresh() }
         }
         col.addView(facingRight)
 
-        col.addView(TextView(this).apply { text = "Nombre"; setTypeface(typeface, Typeface.BOLD); setPadding(0, dp(10), 0, 0) })
-        name = EditText(this).apply { isSingleLine = true; setText("Mi mascota") }
+        col.addView(TextView(this).apply { text = tr("Nombre", "Name"); setTypeface(typeface, Typeface.BOLD); setPadding(0, dp(10), 0, 0) })
+        name = EditText(this).apply { isSingleLine = true; setText(tr("Mi mascota", "My pet")) }
         col.addView(name)
 
         status = small("")
         col.addView(status)
-        col.addView(button("Crear mascota") { make() }.apply {
+        col.addView(button(tr("Crear mascota", "Create pet")) { make() }.apply {
             setTextColor(Color.WHITE)
             background = GradientDrawable().apply { setColor(green); cornerRadius = dp(10).toFloat() }
         }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(52)))
@@ -150,7 +150,7 @@ class MakerActivity : Activity() {
         val uri = data?.data ?: return
         if (requestCode != PICK || resultCode != RESULT_OK) return
         val b = runCatching { open(uri) }.getOrNull()
-        if (b == null) { status.text = "No se pudo abrir esa imagen"; return }
+        if (b == null) { status.text = tr("No se pudo abrir esa imagen", "Couldn't open that image"); return }
         image = b
         // Con fondo transparente no hace falta quitar nada
         removeBg.isChecked = !Drawing.hasTransparentCorner(b)
@@ -176,43 +176,43 @@ class MakerActivity : Activity() {
         val (c, r) = grid()
         val bg = removeBg.isChecked
         val right = facingRight.isChecked
-        status.text = "Preparando..."
+        status.text = tr("Preparando...", "Preparing...")
         Thread {
             val sheet = runCatching { sheetFor(b, c, r, bg, right) }
             runOnUiThread {
                 sheet.onSuccess {
                     preview.setImageDrawable(BitmapDrawable(resources, it).apply { paint.isFilterBitmap = false })
-                    status.text = if (c == 1 && r == 1) "Estas son sus poses. Si se ve raro el fondo, prueba a quitar la casilla del fondo."
-                    else "Así quedan tus ${c * r} dibujos (mirando a la izquierda)."
-                }.onFailure { status.text = it.message ?: "No se pudo preparar el dibujo" }
+                    status.text = if (c == 1 && r == 1) tr("Estas son sus poses. Si se ve raro el fondo, prueba a quitar la casilla del fondo.", "These are its poses. If the background looks odd, try unticking the background box.")
+                    else tr("Así quedan tus ${c * r} dibujos (mirando a la izquierda).", "This is how your ${c * r} drawings look (facing left).")
+                }.onFailure { status.text = it.message ?: tr("No se pudo preparar el dibujo", "Couldn't prepare the drawing") }
             }
         }.start()
     }
 
     private fun make() {
-        val b = image ?: run { status.text = "Primero elige una imagen"; return }
+        val b = image ?: run { status.text = tr("Primero elige una imagen", "Choose an image first"); return }
         val (c, r) = grid()
-        val n = name.text.toString().trim().ifEmpty { "Mi mascota" }
+        val n = name.text.toString().trim().ifEmpty { tr("Mi mascota", "My pet") }
         val bg = removeBg.isChecked
         val right = facingRight.isChecked
-        status.text = "Creando..."
+        status.text = tr("Creando...", "Creating...")
         Thread {
             val result = runCatching { create(this, b, n, c, r, bg, right) }
             runOnUiThread {
                 result.onSuccess { e ->
                     getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE).edit().putString(MainActivity.PREF_PET, e.id).apply()
-                    status.text = "¡${e.name} está lista!"
+                    status.text = tr("¡${e.name} está lista!", "${e.name} is ready!")
                     AlertDialog.Builder(this)
-                        .setTitle("¡${e.name} está lista!")
-                        .setMessage("Ya camina, corre, salta, duerme y se deja arrastrar. Puedes soltarla ya o ajustar sus movimientos en el editor.")
-                        .setPositiveButton("Soltarla") { _, _ -> release(e) }
-                        .setNeutralButton("Editarla") { _, _ -> startActivity(Intent(this, EditorActivity::class.java)); finish() }
-                        .setNegativeButton("Más tarde") { _, _ -> finish() }
+                        .setTitle(tr("¡${e.name} está lista!", "${e.name} is ready!"))
+                        .setMessage(tr("Ya camina, corre, salta, duerme y se deja arrastrar. Puedes soltarla ya o ajustar sus movimientos en el editor.", "It already walks, runs, hops, sleeps and can be dragged. Release it now or tweak its movements in the editor."))
+                        .setPositiveButton(tr("Soltarla", "Release it")) { _, _ -> release(e) }
+                        .setNeutralButton(tr("Editarla", "Edit it")) { _, _ -> startActivity(Intent(this, EditorActivity::class.java)); finish() }
+                        .setNegativeButton(tr("Más tarde", "Later")) { _, _ -> finish() }
                         .show()
                 }.onFailure { err ->
                     status.text = ""
-                    AlertDialog.Builder(this).setTitle("No se pudo crear").setMessage(err.message ?: err.toString())
-                        .setPositiveButton("Vale", null).show()
+                    AlertDialog.Builder(this).setTitle(tr("No se pudo crear", "Couldn't create it")).setMessage(err.message ?: err.toString())
+                        .setPositiveButton(tr("Vale", "OK"), null).show()
                 }
             }
         }.start()

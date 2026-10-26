@@ -27,10 +27,32 @@ object Credits {
         • Icono de la notificación: dibujado para esta app.
     """.trimIndent()
 
+    private val BUNDLED_EN = """
+        MASCOTAS: PETS ON YOUR SCREEN
+        Android app by billkevin91 (github.com/billkevin91).
+
+        MOVEMENT ENGINE
+        Kotlin port of desktopPet (github.com/Adrianotiger/desktopPet), version 1.6.0:
+        • Adriano Petrucci: author of desktopPet and of the animations.xml format. © 2016, MIT license (below).
+        • Zecheriah (github.com/ZechsVariety): pet collisions and throwing in desktopPet.
+
+        INCLUDED PETS (from desktopPet's Pets folder)
+        • eSheep: animations by Adriano Petrucci (collisions and throwing: Zecheriah). Drawings extracted by LiL_Stenly (spritedatabase.net) from the original 1995 eSheep (author unconfirmed).
+        • Blue sheep "Ben" and pink sheep "Pearl" (gSheep 8.0): Oliver B., based on eSheep. They include sounds.
+        • Neko: animations by Adriano Petrucci; drawings from webneko.net. The original Neko was created by Naoshi Watanabe in the 1980s.
+        • Pink Neko: Michelle!, based on the webneko.net Neko.
+        • Fox and pink fox: original drawings by Michelle Tran (Michelle!), a character from The Fox Tale (ganeshsar.github.io/thefoxtale).
+        This app slightly changed the eSheep and gSheep bath so it looks right on a phone.
+
+        OTHER
+        • App icon: made from the desktopPet eSheep icon.
+        • Notification icon: drawn for this app.
+    """.trimIndent()
+
     /** Texto completo con la licencia de desktopPet (lee un archivo: mejor fuera del hilo principal). */
     fun text(context: Context): String = buildString {
-        append(BUNDLED)
-        append("\n\nLICENCIA DE desktopPet\n")
+        append(tr(BUNDLED, BUNDLED_EN))
+        append(tr("\n\nLICENCIA DE desktopPet\n", "\n\ndesktopPet LICENSE\n"))
         append(runCatching { context.assets.open("pets/LICENSE.md").bufferedReader().readText() }.getOrDefault(""))
     }
 }

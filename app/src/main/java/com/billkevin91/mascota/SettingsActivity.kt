@@ -25,40 +25,39 @@ class SettingsActivity : Activity() {
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).roundToInt()
     private val prefs by lazy { getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE) }
-    private val t = Lang::t
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        title = t("Ajustes", "Settings")
+        title = tr("Ajustes", "Settings")
         val col = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(12), dp(16), dp(24))
         }
         col.addView(TextView(this).apply {
-            text = t("Ajustes", "Settings")
+            text = tr("Ajustes", "Settings")
             textSize = 22f
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(Color.rgb(62, 125, 46))
         })
 
-        col.addView(heading(t("Mascotas", "Pets")))
-        col.addView(slider(t("Máximo a la vez", "Maximum at once"), PREF_MAX, 1, MAX_PETS, MAX_PETS) { "$it" })
-        col.addView(slider(t("Volumen de los sonidos", "Sound volume"), PREF_VOLUME, 0, 100, 60) { "$it %" })
+        col.addView(heading(tr("Mascotas", "Pets")))
+        col.addView(slider(tr("Máximo a la vez", "Maximum at once"), PREF_MAX, 1, MAX_PETS, MAX_PETS) { "$it" })
+        col.addView(slider(tr("Volumen de los sonidos", "Sound volume"), PREF_VOLUME, 0, 100, 60) { "$it %" })
 
-        col.addView(heading(t("Cuándo se ven", "When they show")))
-        col.addView(check(t("Ocultarlas en juegos y vídeos a pantalla completa", "Hide them during full-screen games and videos"),
+        col.addView(heading(tr("Cuándo se ven", "When they show")))
+        col.addView(check(tr("Ocultarlas en juegos y vídeos a pantalla completa", "Hide them during full-screen games and videos"),
             PREF_FULLSCREEN, true))
-        col.addView(small(t("Vuelven solas al salir de la pantalla completa. Con la pantalla apagada o bloqueada también se esperan.",
+        col.addView(small(tr("Vuelven solas al salir de la pantalla completa. Con la pantalla apagada o bloqueada también se esperan.",
             "They come back on their own when you leave full screen. They also wait while the screen is off or locked.")))
-        col.addView(check(t("Ahorro de batería: se mueven a pasos, sin deslizarse (también con el ahorro de batería del teléfono)",
+        col.addView(check(tr("Ahorro de batería: se mueven a pasos, sin deslizarse (también con el ahorro de batería del teléfono)",
             "Battery saver: they move in steps, without gliding (also when the phone's battery saver is on)"),
             MainActivity.PREF_SAVER, false))
 
-        col.addView(heading(t("Cómo se portan", "How they behave")))
-        col.addView(check(t("Reaccionan al teléfono: se alegran al cargarlo (⚡) y les entra sueño con la batería baja (😴)",
+        col.addView(heading(tr("Cómo se portan", "How they behave")))
+        col.addView(check(tr("Reaccionan al teléfono: se alegran al cargarlo (⚡) y les entra sueño con la batería baja (😴)",
             "React to the phone: happy when charging (⚡), sleepy when the battery is low (😴)"),
             MainActivity.PREF_REACT, true))
-        col.addView(check(t("Según la hora: de noche duermen más y por la mañana están más activas",
+        col.addView(check(tr("Según la hora: de noche duermen más y por la mañana están más activas",
             "Follow the clock: they sleep more at night and are livelier in the morning"),
             MainActivity.PREF_CLOCK, true))
 

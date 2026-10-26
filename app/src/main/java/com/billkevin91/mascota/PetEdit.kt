@@ -30,25 +30,25 @@ object PetEdit {
 
     /** Comprueba los campos; devuelve un mensaje para el usuario si algo no vale. */
     fun check(def: PetDef, f: Fields): String? {
-        if (f.frames.isEmpty()) return "El movimiento necesita al menos un dibujo"
+        if (f.frames.isEmpty()) return tr("El movimiento necesita al menos un dibujo", "The movement needs at least one drawing")
         val max = def.tilesX * def.tilesY
-        f.frames.firstOrNull { it !in 0 until max }?.let { return "El dibujo $it no existe (hay de 0 a ${max - 1})" }
-        for ((label, text) in listOf("Velocidad al empezar" to f.startInterval, "Velocidad al terminar" to f.endInterval)) {
-            val ms = text.trim().toDoubleOrNull() ?: return "$label: escribe un número de milisegundos"
-            if (ms < 10 || ms > 10_000) return "$label: entre 10 y 10000 ms"
+        f.frames.firstOrNull { it !in 0 until max }?.let { return tr("El dibujo $it no existe (hay de 0 a ${max - 1})", "Drawing $it doesn't exist (there are 0 to ${max - 1})") }
+        for ((label, text) in listOf(tr("Velocidad al empezar", "Speed at the start") to f.startInterval, tr("Velocidad al terminar", "Speed at the end") to f.endInterval)) {
+            val ms = text.trim().toDoubleOrNull() ?: return tr("$label: escribe un número de milisegundos", "$label: type a number of milliseconds")
+            if (ms < 10 || ms > 10_000) return tr("$label: entre 10 y 10000 ms", "$label: between 10 and 10000 ms")
         }
         val vars: (String) -> Double? = { 1.0 }
         for ((label, text) in listOf(
-            "Avance horizontal" to f.startX, "Avance horizontal" to f.endX,
-            "Avance vertical" to f.startY, "Avance vertical" to f.endY, "Repeticiones" to f.repeat,
+            tr("Avance horizontal", "Horizontal step") to f.startX, tr("Avance horizontal", "Horizontal step") to f.endX,
+            tr("Avance vertical", "Vertical step") to f.startY, tr("Avance vertical", "Vertical step") to f.endY, tr("Repeticiones", "Repeats") to f.repeat,
         )) {
             try {
                 Expr.eval(text.trim().ifEmpty { "0" }, vars)
             } catch (e: IllegalArgumentException) {
-                return "$label: \"$text\" no es un número ni una expresión válida"
+                return tr("$label: \"$text\" no es un número ni una expresión válida", "$label: \"$text\" is not a number or a valid expression")
             }
         }
-        if (f.repeatFrom !in 0 until f.frames.size) return "\"Repetir desde\" tiene que ser un dibujo de la lista (0 a ${f.frames.size - 1})"
+        if (f.repeatFrom !in 0 until f.frames.size) return tr("\"Repetir desde\" tiene que ser un dibujo de la lista (0 a ${f.frames.size - 1})", "\"Repeat from\" must be a drawing in the list (0 to ${f.frames.size - 1})")
         return null
     }
 
@@ -98,27 +98,27 @@ object PetEdit {
     const val MAX_SOUND = 2_000_000
 
     fun checkAdvanced(def: PetDef, adv: Advanced): String? {
-        for ((label, list) in listOf("Al terminar" to adv.onEnd, "Al chocar" to adv.onBorder, "Sin suelo" to adv.onGravity)) {
+        for ((label, list) in listOf(tr("Al terminar", "When it ends") to adv.onEnd, tr("Al chocar", "When it hits") to adv.onBorder, tr("Sin suelo", "No floor") to adv.onGravity)) {
             for (n in list) {
-                if (n.id !in def.animations) return "$label: el movimiento ${n.id} no existe"
-                if (n.probability !in 0..1000) return "$label: la probabilidad tiene que ir de 0 a 1000"
+                if (n.id !in def.animations) return tr("$label: el movimiento ${n.id} no existe", "$label: movement ${n.id} doesn't exist")
+                if (n.probability !in 0..1000) return tr("$label: la probabilidad tiene que ir de 0 a 1000", "$label: the probability must be from 0 to 1000")
             }
         }
-        if (adv.onEnd.isNotEmpty() && adv.onEnd.all { it.probability == 0 }) return "Al terminar: alguna probabilidad tiene que ser mayor que 0"
+        if (adv.onEnd.isNotEmpty() && adv.onEnd.all { it.probability == 0 }) return tr("Al terminar: alguna probabilidad tiene que ser mayor que 0", "When it ends: some probability must be greater than 0")
         val vars: (String) -> Double? = { 1.0 }
         adv.children.forEachIndexed { i, c ->
             for (v in listOf(c.x, c.y)) {
                 try { Expr.eval(v.text, vars) } catch (e: IllegalArgumentException) {
-                    return "Cría ${i + 1}: \"${v.text}\" no es un número ni una expresión válida"
+                    return tr("Cría ${i + 1}: \"${v.text}\" no es un número ni una expresión válida", "Offspring ${i + 1}: \"${v.text}\" is not a number or a valid expression")
                 }
             }
-            if (c.next !in def.animations) return "Cría ${i + 1}: el movimiento ${c.next} no existe"
+            if (c.next !in def.animations) return tr("Cría ${i + 1}: el movimiento ${c.next} no existe", "Offspring ${i + 1}: movement ${c.next} doesn't exist")
         }
         adv.sound?.let {
-            if (it.probability !in 0..100) return "Sonido: la probabilidad va de 0 a 100"
-            if (it.loop !in 0..20) return "Sonido: las repeticiones van de 0 a 20"
-            if (it.base64.length > MAX_SOUND) return "Sonido: es demasiado largo (máximo ~1,5 MB)"
-            if (it.base64.isBlank()) return "Sonido: el archivo está vacío"
+            if (it.probability !in 0..100) return tr("Sonido: la probabilidad va de 0 a 100", "Sound: the probability goes from 0 to 100")
+            if (it.loop !in 0..20) return tr("Sonido: las repeticiones van de 0 a 20", "Sound: repeats go from 0 to 20")
+            if (it.base64.length > MAX_SOUND) return tr("Sonido: es demasiado largo (máximo ~1,5 MB)", "Sound: it's too long (max ~1.5 MB)")
+            if (it.base64.isBlank()) return tr("Sonido: el archivo está vacío", "Sound: the file is empty")
         }
         return null
     }

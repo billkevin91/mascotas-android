@@ -36,14 +36,14 @@ class MainActivity : Activity() {
         const val PREF_CLOCK = "follow_clock"
         const val PREF_REACT = "react_phone"
         private const val IMPORT = 7
-        private val SIZES = listOf("Pequeña" to 0.75f, "Mediana" to 1f, "Grande" to 1.5f, "Enorme" to 2f)
-        private val SPEEDS = listOf("Lenta" to 0.5f, "Tranquila" to 0.75f, "Normal" to 1f, "Rápida" to 1.25f)
+        private val SIZES = listOf(tr("Pequeña", "Small") to 0.75f, tr("Mediana", "Medium") to 1f, tr("Grande", "Large") to 1.5f, tr("Enorme", "Huge") to 2f)
+        private val SPEEDS = listOf(tr("Lenta", "Slow") to 0.5f, tr("Tranquila", "Calm") to 0.75f, tr("Normal", "Normal") to 1f, tr("Rápida", "Fast") to 1.25f)
 
         /** Botones de velocidad (se guardan y el servicio la aplica al momento). */
         /** Echa comida si hay mascotas paseando; si no, avisa. Devuelve si la echó. */
         fun feed(a: Activity): Boolean {
             if (PetService.petsOnScreen == 0) {
-                android.widget.Toast.makeText(a, "Primero suelta una mascota", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(a, tr("Primero suelta una mascota", "Release a pet first"), android.widget.Toast.LENGTH_SHORT).show()
                 return false
             }
             PetService.feed(a)
@@ -101,32 +101,32 @@ class MainActivity : Activity() {
             setPadding(dp(16), dp(20), dp(16), dp(24))
         }
         col.addView(TextView(this).apply {
-            text = "Mascotas en pantalla"
+            text = tr("Mascotas en pantalla", "Mascotas: pets on your screen")
             textSize = 26f
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(green)
         })
-        col.addView(text("Una mascota de los 90 que camina por encima de tus apps. " +
-            "Arrástrala con el dedo, lánzala, y tócala dos veces para despedirla."))
+        col.addView(text(tr("Una mascota de los 90 que camina por encima de tus apps. ", "A 90s pet that walks on top of your apps. ") +
+            tr("Arrástrala con el dedo, lánzala, y tócala dos veces para despedirla.", "Drag it with your finger, throw it, and double-tap it to say goodbye.")))
 
         permission = text("")
         col.addView(permission)
-        grant = button("Dar permiso para mostrarse sobre otras apps") { askOverlay() }
+        grant = button(tr("Dar permiso para mostrarse sobre otras apps", "Allow it to display over other apps")) { askOverlay() }
         col.addView(grant)
 
-        col.addView(title("Elige tu mascota"))
+        col.addView(title(tr("Elige tu mascota", "Choose your pet")))
         grid = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         fillGrid()
         col.addView(grid)
-        col.addView(button("Importar mascota (animations.xml)") { pickXml() })
-        removeButton = button("Quitar mascotas importadas") { removeImported() }
+        col.addView(button(tr("Importar mascota (animations.xml)", "Import pet (animations.xml)")) { pickXml() })
+        removeButton = button(tr("Quitar mascotas importadas", "Remove imported pets")) { removeImported() }
         removeButton.visibility = if (PetLibrary.all(this).any { !it.bundled }) View.VISIBLE else View.GONE
         col.addView(removeButton)
-        col.addView(text("Sirven las de desktopPet y las que hagas con su PetEditor. Si importas una con " +
-            "el mismo nombre que otra tuya, se reemplaza. También puedes quitar una manteniéndola pulsada.")
+        col.addView(text(tr("Sirven las de desktopPet y las que hagas con su PetEditor. Si importas una con ", "desktopPet pets and the ones you make with its PetEditor work. If you import one with ") +
+            tr("el mismo nombre que otra tuya, se reemplaza. También puedes quitar una manteniéndola pulsada.", "the same name as one of yours, it's replaced. Hold a pet down to share it or remove it."))
             .apply { textSize = 12f; alpha = 0.6f })
 
-        col.addView(title("Tamaño"))
+        col.addView(title(tr("Tamaño", "Size")))
         val sizes = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         SIZES.forEach { (name, f) ->
             val b = Button(this).apply {
@@ -139,35 +139,35 @@ class MainActivity : Activity() {
         }
         col.addView(sizes)
 
-        col.addView(title("Velocidad"))
+        col.addView(title(tr("Velocidad", "Speed")))
         col.addView(speedRow(this))
         soundBox = android.widget.CheckBox(this)
         col.addView(soundBox.apply {
-            text = "Sonidos de las mascotas (algunas traen: las ovejas de colores, los zorritos...)"
+            text = tr("Sonidos de las mascotas (algunas traen: las ovejas de colores, los zorritos...)", "Pet sounds (some have them: the colored sheep, the foxes...)")
             isChecked = prefs.getBoolean(PREF_SOUND, false)
             setOnCheckedChangeListener { _, on -> prefs.edit().putBoolean(PREF_SOUND, on).apply() }
             setPadding(0, dp(8), 0, dp(8))
         })
 
         col.addView(View(this), LinearLayout.LayoutParams(1, dp(16)))
-        col.addView(button("Soltar en la pantalla") { release() }.apply {
+        col.addView(button(tr("Soltar en la pantalla", "Release on screen")) { release() }.apply {
             textSize = 18f
             setTextColor(Color.WHITE)
             background = GradientDrawable().apply { setColor(green); cornerRadius = dp(12).toFloat() }
         }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(56)))
         col.addView(View(this), LinearLayout.LayoutParams(1, dp(8)))
-        col.addView(button("🍪 Dar de comer") { if (feed(this)) goHome() })
-        col.addView(text("Toca una mascota para acariciarla. La comida se puede arrastrar: " +
-            "irán a por ella. También desde el icono de la app (mantenlo pulsado).").apply { textSize = 13f; alpha = 0.7f })
-        col.addView(button("Quitar todas") { PetService.clear(this) })
-        col.addView(button("⚙ Ajustes") { startActivity(Intent(this, SettingsActivity::class.java)) })
-        col.addView(button("Probar movimientos") { startActivity(Intent(this, TestActivity::class.java)) })
-        col.addView(button("Editar mascotas") { startActivity(Intent(this, EditorActivity::class.java)) })
-        col.addView(button("🎨 Crear mascota desde un dibujo") { startActivity(Intent(this, MakerActivity::class.java)) })
+        col.addView(button(tr("🍪 Dar de comer", "🍪 Feed them")) { if (feed(this)) goHome() })
+        col.addView(text(tr("Toca una mascota para acariciarla. La comida se puede arrastrar: ", "Tap a pet to pet it. You can drag the food: ") +
+            tr("irán a por ella. También desde el icono de la app (mantenlo pulsado).", "they'll go get it. Also from the app icon (hold it down).")).apply { textSize = 13f; alpha = 0.7f })
+        col.addView(button(tr("Quitar todas", "Remove all")) { PetService.clear(this) })
+        col.addView(button(tr("⚙ Ajustes", "⚙ Settings")) { startActivity(Intent(this, SettingsActivity::class.java)) })
+        col.addView(button(tr("Probar movimientos", "Try movements")) { startActivity(Intent(this, TestActivity::class.java)) })
+        col.addView(button(tr("Editar mascotas", "Edit pets")) { startActivity(Intent(this, EditorActivity::class.java)) })
+        col.addView(button(tr("🎨 Crear mascota desde un dibujo", "🎨 Create a pet from a drawing")) { startActivity(Intent(this, MakerActivity::class.java)) })
 
-        col.addView(text("Mascotas del proyecto desktopPet de Adriano Petrucci y su comunidad " +
-            "(github.com/Adrianotiger/desktopPet, licencia MIT).").apply { textSize = 12f; alpha = 0.6f; setPadding(0, dp(24), 0, 0) })
-        col.addView(button("Créditos y licencias") { showCredits() })
+        col.addView(text(tr("Mascotas del proyecto desktopPet de Adriano Petrucci y su comunidad ", "Pets from the desktopPet project by Adriano Petrucci and its community ") +
+            tr("(github.com/Adrianotiger/desktopPet, licencia MIT).", "(github.com/Adrianotiger/desktopPet, MIT license).")).apply { textSize = 12f; alpha = 0.6f; setPadding(0, dp(24), 0, 0) })
+        col.addView(button(tr("Créditos y licencias", "Credits and licenses")) { showCredits() })
 
         // Android 15 dibuja detrás de las barras: deja espacio para ellas
         setContentView(ScrollView(this).apply { fitsSystemWindows = true; addView(col) })
@@ -242,7 +242,7 @@ class MainActivity : Activity() {
         // También se enciende o apaga desde la notificación
         soundBox.isChecked = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(PREF_SOUND, false)
         val ok = Settings.canDrawOverlays(this)
-        permission.text = if (ok) "✔ Permiso concedido" else "Para andar por tu pantalla, la app necesita el permiso \"Mostrar sobre otras apps\"."
+        permission.text = if (ok) tr("✔ Permiso concedido", "✔ Permission granted") else tr("Para andar por tu pantalla, la app necesita el permiso \"Mostrar sobre otras apps\".", "To walk on your screen, the app needs the \"Display over other apps\" permission.")
         grant.visibility = if (ok) View.GONE else View.VISIBLE
         for ((folder, v) in petCards) {
             v.background = GradientDrawable().apply {
@@ -278,9 +278,9 @@ class MainActivity : Activity() {
                     autoLinkMask = android.text.util.Linkify.WEB_URLS
                     setPadding(dp(20), dp(12), dp(20), dp(12))
                 }
-                AlertDialog.Builder(this).setTitle("Créditos y licencias")
+                AlertDialog.Builder(this).setTitle(tr("Créditos y licencias", "Credits and licenses"))
                     .setView(ScrollView(this).apply { addView(tv) })
-                    .setPositiveButton("Cerrar", null).show()
+                    .setPositiveButton(tr("Cerrar", "Close"), null).show()
             }
         }.start()
     }
@@ -290,10 +290,10 @@ class MainActivity : Activity() {
         val imported = PetLibrary.all(this).filter { !it.bundled }
         if (imported.isEmpty()) return
         val checked = BooleanArray(imported.size)
-        AlertDialog.Builder(this).setTitle("Quitar mascotas importadas")
+        AlertDialog.Builder(this).setTitle(tr("Quitar mascotas importadas", "Remove imported pets"))
             .setMultiChoiceItems(imported.map { it.name }.toTypedArray(), checked) { _, i, on -> checked[i] = on }
-            .setPositiveButton("Quitar") { _, _ -> delete(imported.filterIndexed { i, _ -> checked[i] }.map { it.id }) }
-            .setNegativeButton("Cancelar", null).show()
+            .setPositiveButton(tr("Quitar", "Remove")) { _, _ -> delete(imported.filterIndexed { i, _ -> checked[i] }.map { it.id }) }
+            .setNegativeButton(tr("Cancelar", "Cancel"), null).show()
     }
 
     private fun delete(ids: List<String>) {
@@ -304,14 +304,14 @@ class MainActivity : Activity() {
         if (pet in ids) { pet = PetLibrary.BUNDLED.first(); save() }
         fillGrid()
         refresh()
-        if (ids.isNotEmpty()) Toast.makeText(this, if (ids.size == 1) "Mascota quitada" else "${ids.size} mascotas quitadas", Toast.LENGTH_SHORT).show()
+        if (ids.isNotEmpty()) Toast.makeText(this, if (ids.size == 1) tr("Mascota quitada", "Pet removed") else tr("${ids.size} mascotas quitadas", "${ids.size} pets removed"), Toast.LENGTH_SHORT).show()
     }
 
     private fun pickXml() {
         val i = Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*")
             .putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("text/xml", "application/xml", "text/plain", "application/octet-stream"))
         runCatching { startActivityForResult(i, IMPORT) }
-            .onFailure { Toast.makeText(this, "No hay explorador de archivos", Toast.LENGTH_LONG).show() }
+            .onFailure { Toast.makeText(this, tr("No hay explorador de archivos", "There's no file browser"), Toast.LENGTH_LONG).show() }
     }
 
     @Deprecated("Activity sin AndroidX")
@@ -321,11 +321,11 @@ class MainActivity : Activity() {
         if (requestCode == PetShare.SAVE_REQUEST && resultCode == RESULT_OK) {
             val id = savingId ?: return
             val ok = runCatching { PetShare.saveTo(this, id, uri) }.isSuccess
-            Toast.makeText(this, if (ok) "Guardada" else "No se pudo guardar", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, if (ok) tr("Guardada", "Saved") else tr("No se pudo guardar", "Couldn't save"), Toast.LENGTH_SHORT).show()
             return
         }
         if (requestCode != IMPORT || resultCode != RESULT_OK) return
-        Toast.makeText(this, "Importando...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, tr("Importando...", "Importing..."), Toast.LENGTH_SHORT).show()
         Thread {
             val result = runCatching {
                 contentResolver.openInputStream(uri)!!.use { PetLibrary.import(this, it) }
@@ -339,11 +339,11 @@ class MainActivity : Activity() {
                     save()
                     fillGrid()
                     refresh()
-                    Toast.makeText(this, if (r.replaced) "${e.name} se actualizó (ya la tenías)" else "¡${e.name} está lista para soltar!",
+                    Toast.makeText(this, if (r.replaced) tr("${e.name} se actualizó (ya la tenías)", "${e.name} was updated (you already had it)") else tr("¡${e.name} está lista para soltar!", "${e.name} is ready to release!"),
                         Toast.LENGTH_LONG).show()
                 }.onFailure { err ->
-                    AlertDialog.Builder(this).setTitle("No se pudo importar")
-                        .setMessage(err.message ?: err.toString()).setPositiveButton("Vale", null).show()
+                    AlertDialog.Builder(this).setTitle(tr("No se pudo importar", "Couldn't import"))
+                        .setMessage(err.message ?: err.toString()).setPositiveButton(tr("Vale", "OK"), null).show()
                 }
             }
         }.start()
@@ -373,17 +373,17 @@ class MainActivity : Activity() {
             setOnClickListener { pet = folder; save(); refresh() }
             // Mantener pulsada: compartirla, guardarla como archivo o (si es tuya) quitarla
             setOnLongClickListener {
-                val options = arrayListOf("Compartir", "Guardar como archivo")
-                if (!e.bundled) options.add("Quitar")
+                val options = arrayListOf(tr("Compartir", "Share"), tr("Guardar como archivo", "Save as file"))
+                if (!e.bundled) options.add(tr("Quitar", "Remove"))
                 AlertDialog.Builder(this@MainActivity).setTitle(e.name)
                     .setItems(options.toTypedArray()) { _, which ->
                         when (which) {
                             0 -> runCatching { PetShare.share(this@MainActivity, folder) }
                             1 -> { savingId = folder; PetShare.askWhere(this@MainActivity, folder) }
-                            2 -> AlertDialog.Builder(this@MainActivity).setTitle("¿Quitar ${e.name}?")
-                                .setMessage("Se borra la mascota importada de este teléfono.")
-                                .setPositiveButton("Quitar") { _, _ -> delete(listOf(folder)) }
-                                .setNegativeButton("Cancelar", null).show()
+                            2 -> AlertDialog.Builder(this@MainActivity).setTitle(tr("¿Quitar ${e.name}?", "Remove ${e.name}?"))
+                                .setMessage(tr("Se borra la mascota importada de este teléfono.", "The pet is deleted from this phone."))
+                                .setPositiveButton(tr("Quitar", "Remove")) { _, _ -> delete(listOf(folder)) }
+                                .setNegativeButton(tr("Cancelar", "Cancel"), null).show()
                         }
                     }.show()
                 true
