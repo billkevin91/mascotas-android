@@ -71,6 +71,8 @@ class PetBrain(
     var speed = 1.0
     /** Según la hora: de noche duerme más y por la mañana está más activa (lo pone el servicio). */
     var followClock = false
+    /** Batería baja: tiene sueño (duerme como de noche, a cualquier hora). Lo pone el servicio. */
+    var sleepy = false
     /** La hora del día (0-23); se puede cambiar en las pruebas. */
     var hourOfDay: () -> Int = { Calendar.getInstance().get(Calendar.HOUR_OF_DAY) }
 
@@ -212,6 +214,13 @@ class PetBrain(
     fun caress(): Boolean {
         if (isChild || isDying || dragging || tossing || loopId > 0 || current == null) return false
         if (calm()) moves.happy.randomOrNull(rnd)?.let { setAnimation(it) }
+        return true
+    }
+
+    /** Se echa a dormir si está tranquila (batería baja). Devuelve si reaccionó. */
+    fun doze(): Boolean {
+        if (isChild || isDying || dragging || tossing || loopId > 0 || current == null) return false
+        if (calm()) moves.sleep.randomOrNull(rnd)?.let { setAnimation(it) }
         return true
     }
 
@@ -463,9 +472,14 @@ class PetBrain(
 
     private enum class DayPart { NIGHT, MORNING, DAY }
 
-    /** Qué parte del día cuenta ahora (siempre DAY si no sigue el reloj, si es una cría o en el modo prueba). */
+    /**
+     * Qué parte del día cuenta ahora: con la batería baja, siempre noche; si no sigue el reloj,
+     * si es una cría o en el modo prueba, siempre DAY.
+     */
     private fun dayPart(): DayPart {
-        if (!followClock || isChild || loopId > 0) return DayPart.DAY
+        if (isChild || loopId > 0) return DayPart.DAY
+        if (sleepy) return DayPart.NIGHT
+        if (!followClock) return DayPart.DAY
         return when (hourOfDay()) {
             in 22..23, in 0..6 -> DayPart.NIGHT
             in 7..10 -> DayPart.MORNING

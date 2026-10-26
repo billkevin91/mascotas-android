@@ -77,6 +77,15 @@ class PetService : Service() {
             if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(i) else context.startService(i)
         }
 
+        /** El servicio que está en marcha (para avisarle de las notificaciones desde [AvisosService]). */
+        @Volatile private var running: PetService? = null
+        private val main = Handler(Looper.getMainLooper())
+
+        /** Llegó una notificación de otra app (no se sabe ni se lee cuál). */
+        fun notified() {
+            main.post { running?.react(Reaction.NOTIFY) }
+        }
+
         /** Cae comida desde arriba; las mascotas van a comérsela. */
         fun feed(context: Context) = send(context, ACTION_FEED)
 
@@ -125,12 +134,26 @@ class PetService : Service() {
     private var testMode = false
     /** Pantalla apagada o bloqueada: nadie las ve, así que se esperan quietas (ahorra batería). */
     private var asleep = false
+    /** Reaccionar al teléfono (cargador, batería baja, notificaciones). */
+    private var reactOn = true
+    /** Android avisó de batería baja (y aún no de que se recuperó). */
+    private var lowBattery = false
+    private val lastReaction = HashMap<Reaction, Long>()
+
+    enum class Reaction { CHARGE, LOW_BATTERY, NOTIFY }
+
     /** Ahorro de batería (el de la app o el del sistema): sin deslizamiento entre pasos (mueve menos la ventana). */
     private var powerSave = false
     private var saverOn = false
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            if (intent.action == PowerManager.ACTION_POWER_SAVE_MODE_CHANGED) readPowerSave() else checkAwake()
+            when (intent.action) {
+                PowerManager.ACTION_POWER_SAVE_MODE_CHANGED -> readPowerSave()
+                Intent.ACTION_POWER_CONNECTED -> react(Reaction.CHARGE)
+                Intent.ACTION_BATTERY_LOW -> { setLowBattery(true); react(Reaction.LOW_BATTERY) }
+                Intent.ACTION_BATTERY_OKAY -> setLowBattery(false)
+                else -> checkAwake()
+            }
         }
     }
     private val awakeCheck = Runnable { checkAwake() }
@@ -164,7 +187,12 @@ class PetService : Service() {
         readPrefs(prefs)
         readPowerSave()
         checkAwake()
+        setLowBattery(batteryIsLow())
+        running = this
         val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_POWER_CONNECTED)
+            addAction(Intent.ACTION_BATTERY_LOW)
+            addAction(Intent.ACTION_BATTERY_OKAY)
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_SCREEN_ON)
             addAction(Intent.ACTION_USER_PRESENT)
@@ -173,6 +201,42 @@ class PetService : Service() {
         // Son avisos del sistema: llegan aunque el receptor no sea público
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(screenReceiver, filter, RECEIVER_NOT_EXPORTED)
         else registerReceiver(screenReceiver, filter)
+    }
+
+    /** Al arrancar: ¿ya está baja? (Android sólo avisa al cruzar el límite, ~15 %). */
+    private fun batteryIsLow(): Boolean {
+        val i = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return false
+        val level = i.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1)
+        val scale = i.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, 100)
+        val plugged = i.getIntExtra(android.os.BatteryManager.EXTRA_PLUGGED, 0) != 0
+        return !plugged && level >= 0 && scale > 0 && level * 100 / scale <= 15
+    }
+
+    private fun setLowBattery(low: Boolean) {
+        lowBattery = low
+        for (p in pets) p.brain.sleepy = reactOn && lowBattery && !p.test
+    }
+
+    /**
+     * Las mascotas reaccionan al teléfono: con el cargador se alegran (⚡), con la batería baja
+     * les entra sueño (😴) y con una notificación se sorprenden (❗). Sólo si se ven y está activado.
+     */
+    fun react(kind: Reaction) {
+        if (!reactOn || asleep || testMode) return
+        val now = SystemClock.uptimeMillis()
+        // Una ráfaga de notificaciones no las vuelve locas
+        val gap = if (kind == Reaction.NOTIFY) 10_000L else 3_000L
+        if (now - (lastReaction[kind] ?: -gap) < gap) return
+        lastReaction[kind] = now
+        android.util.Log.i(TAG, "reacción: $kind")
+        for (p in ArrayList(pets)) {
+            if (p.test || p.paused || p.brain.isChild) continue
+            val reacted = if (kind == Reaction.LOW_BATTERY) p.brain.doze() else p.brain.caress()
+            if (!reacted) continue
+            p.restart()
+            val emoji = when (kind) { Reaction.CHARGE -> "⚡"; Reaction.LOW_BATTERY -> "😴"; Reaction.NOTIFY -> "❗" }
+            showHearts(p.centerX().roundToInt(), p.top(), emoji)
+        }
     }
 
     private fun readPowerSave() {
@@ -187,6 +251,8 @@ class PetService : Service() {
         soundOn = prefs.getBoolean(MainActivity.PREF_SOUND, false)
         saverOn = prefs.getBoolean(MainActivity.PREF_SAVER, false)
         followClock = prefs.getBoolean(MainActivity.PREF_CLOCK, true)
+        reactOn = prefs.getBoolean(MainActivity.PREF_REACT, true)
+        if (::wm.isInitialized) setLowBattery(lowBattery)
         if (::wm.isInitialized) readPowerSave()
         if (!soundOn && ::sounds.isInitialized) sounds.stopAll()
         // El botón de la notificación dice si el sonido está encendido
@@ -303,6 +369,7 @@ class PetService : Service() {
     override fun onDestroy() {
         getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(prefsListener)
         runCatching { unregisterReceiver(screenReceiver) }
+        if (running === this) running = null
         removeAll()
         sounds.stopAll()
         handler.removeCallbacksAndMessages(null)
@@ -372,6 +439,7 @@ class PetService : Service() {
         brain.others = ::allBrains
         brain.speed = if (test) testSpeed else speed
         brain.followClock = followClock && !test
+        brain.sleepy = reactOn && lowBattery && !test
         brain.start()
         val w = PetWindow(brain, sheet, scale, folder, test = test).takeIf { it.show() }
         // Una normal que llega mientras se prueban movimientos (p. ej. "Otra más") espera oculta
@@ -398,8 +466,8 @@ class PetService : Service() {
         return foods.filter { it.ready() }.minByOrNull { Math.abs(it.centerX() - cx) }
     }
 
-    /** Corazoncitos que suben y se desvanecen (caricias y comida). */
-    private fun showHearts(cx: Int, top: Int) {
+    /** Corazoncitos (o [emoji], si se da) que suben y se desvanecen: caricias, comida y reacciones. */
+    private fun showHearts(cx: Int, top: Int, emoji: String? = null) {
         if (hearts.size >= MAX_HEARTS) return
         val d = resources.displayMetrics.density
         val w = (64 * d).toInt()
@@ -413,12 +481,12 @@ class PetService : Service() {
             gravity = Gravity.TOP or Gravity.START
             x = cx - w / 2
             y = top - h + (16 * d).toInt()
-            title = "Corazones-mascota"
+            title = if (emoji == null) "Corazones-mascota" else "Burbuja-mascota"
             if (Build.VERSION.SDK_INT >= 30) setFitInsetsTypes(0)
         }
         val start = SystemClock.uptimeMillis()
         val view = object : View(this) {
-            private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(255, 77, 109) }
+            private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(255, 77, 109); textAlign = Paint.Align.CENTER }
             private val path = android.graphics.Path()
             override fun onDraw(canvas: Canvas) {
                 val t = (SystemClock.uptimeMillis() - start) / 1400f
@@ -435,7 +503,11 @@ class PetService : Service() {
                     val hx = width * (0.5f + 0.22f * kotlin.math.sin(k * 6f + i * 2f))
                     val hy = height - size - k * (height - size * 1.5f)
                     paint.alpha = ((1f - k) * 255).toInt()
-                    heart(canvas, hx, hy, size)
+                    if (emoji == null) heart(canvas, hx, hy, size)
+                    else {
+                        paint.textSize = size * 1.2f
+                        canvas.drawText(emoji, hx, hy + size, paint)
+                    }
                 }
                 postInvalidateOnAnimation()
             }
@@ -633,6 +705,13 @@ class PetService : Service() {
             private set
 
         fun centerX() = params.x + params.width / 2f
+        fun top() = params.y
+
+        /** Que el cambio de movimiento se vea ya. */
+        fun restart() {
+            handler.removeCallbacks(tick)
+            handler.post(tick)
+        }
 
         init {
             brain.hasKids = { pets.any { it.parent === this } }

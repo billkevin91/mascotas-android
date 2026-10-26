@@ -23,6 +23,8 @@ class PetMoves(def: PetDef) {
      * porque la cría sigue sola y se verían dos ovejas.
      */
     val withProps: Set<Int>
+    /** Empezar a dormir (el principio de cada siesta: sleep1a, sleepa...). */
+    val sleep: List<Int>
 
     init {
         val all = def.animations.values.sortedBy { it.id }
@@ -55,5 +57,8 @@ class PetMoves(def: PetDef) {
         withProps = all.map { it.id }.filter { id ->
             def.scene(def.sceneStart(id)).any { !def.children[it].isNullOrEmpty() }
         }.toSet()
+        sleep = all.filter {
+            "sleep" in it.name.lowercase() && fits(it) && it.id !in withProps && def.sceneStart(it.id) == it.id
+        }.map { it.id }
     }
 }

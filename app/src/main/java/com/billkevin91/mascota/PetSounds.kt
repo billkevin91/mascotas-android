@@ -43,6 +43,7 @@ class PetSounds(private val context: Context) {
             mp.prepare()
             mp.start()
             playing.add(mp)
+            android.util.Log.i("Mascotas", "sonido: $pet movimiento $animationId")
         }
     }
 

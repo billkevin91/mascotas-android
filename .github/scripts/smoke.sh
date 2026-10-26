@@ -18,10 +18,10 @@ for i in 1 2 3 4 5 6; do
   adb exec-out screencap -p > shots/paseo$i.png
 done
 # Sonido: la oveja azul de prueba estornuda en bucle; Android tiene que haber reproducido algo de la app
-uid=$(adb shell pm list packages -U $PKG | sed 's/.*uid://' | tr -d '\r')
+# (cada sonido que empieza queda en el registro de la app)
 adb shell dumpsys audio > shots/audio.txt
-sonidos=$(grep "$uid" shots/audio.txt | grep -c -i "started")
-echo "::notice title=Sonido::$sonidos reproducciones de la app (uid $uid) en el registro de audio"
+sonidos=$(adb logcat -d -s Mascotas | grep -c "sonido:")
+echo "::notice title=Sonido::$sonidos sonidos según el registro de la app"
 if [ "$sonidos" -lt 1 ]; then echo "::error::La app no reprodujo ningún sonido"; fail=1; fi
 # Arrastrar y lanzar por la parte de abajo, donde caminan
 read -r W H < <(adb shell wm size | tail -1 | sed 's/.*: //; s/x/ /')
@@ -105,6 +105,36 @@ quien=$(grep -o "se la comió .*" shots/comida.txt | head -1)
 echo "::notice title=Comida::cayó $cae; $quien a los ${comida_en} s (-1 = nadie)"
 if [ "$cae" -lt 1 ]; then echo "::error::El atajo Dar de comer no echó comida"; fail=1; fi
 if [ "$comida_en" -lt 0 ]; then echo "::error::Nadie se comió la comida en 2 minutos"; fail=1; fi
+# Reacciones al teléfono: cargador, batería baja y una notificación
+reaccion() {  # reaccion NOMBRE_EN_EL_REGISTRO TÍTULO
+  local ok=0
+  for s in 1 2 3 4 5 6; do
+    sleep 1
+    if adb logcat -d -s Mascotas | grep -q "reacción: $1"; then ok=1; break; fi
+  done
+  burbujas=$(ventanas contar Burbuja-mascota)
+  echo "::notice title=$2::reaccionó=$ok, burbujas en pantalla=$burbujas"
+  if [ "$ok" -ne 1 ]; then echo "::error::No reaccionaron a: $2"; fail=1; fi
+}
+adb logcat -c
+adb shell dumpsys battery unplug
+sleep 2
+adb shell dumpsys battery set ac 1
+reaccion CHARGE "Cargador"
+adb exec-out screencap -p > shots/cargando.png
+adb shell dumpsys battery unplug
+adb shell dumpsys battery set level 50
+sleep 2
+adb shell dumpsys battery set level 5
+reaccion LOW_BATTERY "Batería baja"
+adb exec-out screencap -p > shots/bateria_baja.png
+adb shell dumpsys battery reset
+adb shell cmd notification allow_listener $PKG/$PKG.AvisosService
+sleep 3
+adb shell cmd notification post -t "Prueba" prueba "Hola, mascotas"
+reaccion NOTIFY "Notificación"
+adb exec-out screencap -p > shots/notificacion.png
+adb logcat -d -s Mascotas > shots/reacciones.txt
 hz=100
 if [ -z "$c0$c1" ] || [ -z "$c2" ] || [ -z "$c3" ]; then
   echo "::warning::No se pudo medir el tiempo de CPU"; c0=0; c1=0; c2=0; c3=0
