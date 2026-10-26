@@ -7,19 +7,22 @@ import android.provider.Settings
 import android.widget.Toast
 
 /**
- * Atajos del icono de la app (mantenerlo pulsado): "Dar de comer" y "Otra mascota".
+ * Atajos del icono de la app (mantenerlo pulsado: "Dar de comer" y "Otra mascota") y botones
+ * del widget (también "Quitar").
  * No tiene pantalla: hace la acción y se cierra.
  */
 class AccionActivity : Activity() {
     companion object {
         const val COMER = "com.billkevin91.mascota.atajo.COMER"
         const val OTRA = "com.billkevin91.mascota.atajo.OTRA"
+        const val QUITAR = "com.billkevin91.mascota.atajo.QUITAR"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         when (intent.action) {
             COMER -> MainActivity.feed(this)
+            QUITAR -> PetService.clear(this)
             OTRA -> {
                 if (Settings.canDrawOverlays(this)) {
                     val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)

@@ -17,12 +17,14 @@ Es un port a Kotlin del motor de [desktopPet](https://github.com/Adrianotiger/de
   mascota lo hace al momento; puede repetirlo y mostrar su nombre encima. Es un modo aparte:
   mientras pruebas, tus mascotas se esperan ocultas y sólo se mueve la de prueba.
 - **Editar mascotas**: cambia los dibujos, la velocidad, el avance y las repeticiones de cada
-  movimiento, con vista previa en vivo. Las incluidas se guardan como copia "(mía)".
+  movimiento, con vista previa en vivo; en "Opciones avanzadas", qué hace después, sus crías y su sonido. Las incluidas se guardan como copia "(mía)".
 - **Sonidos** (si la mascota los trae): se encienden y apagan en la pantalla principal o en la notificación.
 - **Reaccionan al teléfono**: se alegran al cargarlo, les entra sueño con la batería baja y, si das acceso, se sorprenden con las notificaciones (sin leerlas).
 - **Según la hora**: de noche duermen más y por la mañana están más activas (se puede apagar).
 - **Batería**: con la pantalla apagada o bloqueada se esperan quietas; el interruptor **Ahorro de batería**
   (o el del teléfono) hace que se muevan a pasos, sin deslizarse.
+- **Crear mascota desde un dibujo**: elige una imagen y la app inventa sus poses y movimientos.
+- **Widget** en la pantalla de inicio: soltar, dar de comer y quitar.
 - **Importar mascotas**: cualquier `animations.xml` de desktopPet (las 26 de su carpeta
   [Pets](https://github.com/Adrianotiger/desktopPet/tree/master/Pets) funcionan) o hecho con su PetEditor.
 
@@ -34,6 +36,8 @@ Es un port a Kotlin del motor de [desktopPet](https://github.com/Adrianotiger/de
 | `MainActivity.kt` | Elegir mascota y tamaño, pedir el permiso y soltarla |
 | `EditorActivity.kt`, `PetEdit.kt` | Editor sencillo de movimientos |
 | `PetSounds.kt` | Sonidos de las mascotas |
+| `MakerActivity.kt`, `PetMaker.kt`, `Drawing.kt`, `Pixels.kt` | Crear una mascota desde un dibujo |
+| `MascotasWidget.kt` | Widget de la pantalla de inicio |
 | `PetMoves.kt` | Qué movimientos sirven para caminar, alegrarse y comer |
 | `AvisosService.kt` | Se entera de que llegó una notificación (sin leerla) |
 | `AccionActivity.kt` | Atajos del icono: dar de comer y otra mascota |

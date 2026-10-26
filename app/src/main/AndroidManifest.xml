@@ -48,6 +48,25 @@
             android:label="Editar mascotas"
             android:windowSoftInputMode="adjustResize" />
 
+        <activity
+            android:name=".MakerActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
+            android:exported="false"
+            android:label="Crear mascota" />
+
+        <!-- Widget de la pantalla de inicio -->
+        <receiver
+            android:name=".MascotasWidget"
+            android:exported="true"
+            android:label="Mascotas">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info" />
+        </receiver>
+
         <!-- Reaccionar a notificaciones (opcional: hay que dar "Acceso a notificaciones") -->
         <service
             android:name=".AvisosService"

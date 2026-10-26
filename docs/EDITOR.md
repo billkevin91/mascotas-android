@@ -38,12 +38,16 @@ Botón **Editar mascotas** (`EditorActivity.kt`, cambios en `PetEdit.kt`, prueba
 - `PetService` guarda en memoria cada mascota cargada (`defs`, `sheets`): al guardar cambios de
   una mascota que está en pantalla hay que borrarla de esa memoria para que use la versión nueva.
 
+## Hecho: avanzado y crear desde un dibujo
+
+- **Opciones avanzadas** (en Editar mascotas): siguientes movimientos (al terminar, al chocar, sin
+  suelo) con probabilidad y dónde valen; crías; sonido; autor y descripción. Lógica en
+  `PetEdit.Advanced` (`AdvancedEditTest`).
+- **Crear desde un dibujo** (`MakerActivity`): un solo dibujo → 11 poses generadas (`Drawing`) y
+  movimientos básicos (`PetMaker`, `MakerTest`); o una hoja en cuadrícula. Quitar fondo y recortar
+  en `Pixels` (`PixelsTest`).
+
 ## Pendiente
 
-1. **Avanzado de la fase 1**: a qué movimiento pasa después (al terminar, borde, gravedad) con probabilidades.
-2. **Cabecera, apariciones y crías**: nombre, autor, dónde aparece, qué crías salen.
-3. **Mascota nueva desde un dibujo**: elegir una imagen de la galería, indicar la cuadrícula
-   y el color de fondo; la app crea movimientos básicos (caminar, caer, arrastrar, dormir)
-   para que funcione desde el primer momento y luego se ajustan en la fase 1.
-4. **Compartir**: exportar el `animations.xml` (sirve también en desktopPet de Windows).
-5. **Editar sonidos**: la app ya los reproduce (con interruptor); falta poder cambiarlos.
+1. **Apariciones**: dónde y cómo entra en pantalla (por ahora, las del XML o las de `PetMaker`).
+2. **Compartir**: exportar el `animations.xml` (sirve también en desktopPet de Windows).

@@ -3,4 +3,8 @@
     <string name="app_name">Mascotas</string>
     <string name="atajo_comer">Dar de comer</string>
     <string name="atajo_otra">Otra mascota</string>
+    <string name="widget_soltar">🐑 Soltar</string>
+    <string name="widget_comida">🍪 Comida</string>
+    <string name="widget_quitar">✖ Quitar</string>
+    <string name="widget_descripcion">Suelta una mascota, dales de comer o quítalas sin abrir la app</string>
 </resources>

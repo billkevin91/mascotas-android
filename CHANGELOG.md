@@ -2,6 +2,23 @@
 
 Todos los cambios de la app, del más nuevo al más antiguo.
 
+## [Sin publicar]
+
+### Añadido
+- **Crear mascota desde un dibujo** (botón 🎨): eliges una imagen de la galería. Con un solo dibujo,
+  la app le quita el fondo (lo que toca los bordes; lo de dentro se queda), lo recorta, lo ajusta de
+  tamaño e inventa 11 poses (paso, inclinarse, saltito, colgar, aterrizar, tumbarse con "z"...).
+  Con una hoja de varios dibujos, indicas columnas y filas. Se crea con movimientos básicos (caminar,
+  correr, alegrarse, dormir, caer, arrastrar, lanzar y despedirse) y luego se ajusta en el editor.
+- **Editor avanzado** ("Opciones avanzadas" en Editar mascotas): a qué movimientos pasa al terminar,
+  al chocar o al quedarse sin suelo, con su probabilidad y dónde vale; sus crías (posición y
+  movimiento); su sonido (elegir, escuchar, probabilidad, repeticiones, quitar); autor y descripción.
+- **Widget** para la pantalla de inicio: 🐑 Soltar, 🍪 Comida y ✖ Quitar.
+- Pruebas: mascotas creadas (un dibujo y hojas) viven media hora sin atascarse, caen, se arrastran,
+  se lanzan, van a la comida, se despiden y se guardan igual; quitar fondo y recortar; opciones
+  avanzadas (cambian lo que hace, se guardan en el XML, avisan de errores). En el emulador: crear
+  una mascota desde un dibujo y soltarla, el widget registrado y su botón Quitar.
+
 ## 1.4 — 2026-10-26
 
 ### Añadido

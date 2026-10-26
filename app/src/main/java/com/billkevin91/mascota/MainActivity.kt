@@ -186,6 +186,7 @@ class MainActivity : Activity() {
         col.addView(button("Quitar todas") { PetService.clear(this) })
         col.addView(button("Probar movimientos") { startActivity(Intent(this, TestActivity::class.java)) })
         col.addView(button("Editar mascotas") { startActivity(Intent(this, EditorActivity::class.java)) })
+        col.addView(button("🎨 Crear mascota desde un dibujo") { startActivity(Intent(this, MakerActivity::class.java)) })
 
         col.addView(text("Mascotas del proyecto desktopPet de Adriano Petrucci y su comunidad " +
             "(github.com/Adrianotiger/desktopPet, licencia MIT).").apply { textSize = 12f; alpha = 0.6f; setPadding(0, dp(24), 0, 0) })
@@ -195,6 +196,17 @@ class MainActivity : Activity() {
         setContentView(ScrollView(this).apply { fitsSystemWindows = true; addView(col) })
 
         // Para la prueba automática: adb shell am start ... --es soltar esheep64,neko
+        // Prueba automática del creador: adb shell am start ... --ez crear_prueba true
+        if (intent.getBooleanExtra("crear_prueba", false) && Settings.canDrawOverlays(this)) {
+            Thread {
+                val made = runCatching { MakerActivity.create(this, Drawing.demo(), "Dibujo de prueba", 1, 1, removeBg = true, facingRight = false) }
+                made.onSuccess {
+                    android.util.Log.i("Mascotas", "creada: ${it.id}")
+                    PetService.add(this, it.id, size)
+                }.onFailure { android.util.Log.e("Mascotas", "crear: no se pudo", it) }
+            }.start()
+            return
+        }
         val test = intent.getStringExtra("soltar")
         if (test != null && Settings.canDrawOverlays(this)) {
             test.split(',').filter { PetLibrary.exists(this, it) }.forEach { PetService.add(this, it, size) }

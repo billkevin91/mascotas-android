@@ -135,6 +135,29 @@ adb shell cmd notification post -t "Prueba" prueba "Hola, mascotas"
 reaccion NOTIFY "Notificación"
 adb exec-out screencap -p > shots/notificacion.png
 adb logcat -d -s Mascotas > shots/reacciones.txt
+# Crear una mascota desde un dibujo (una bolita con ojos sobre fondo blanco) y soltarla
+antes_crear=$(ventanas contar $PKG)
+adb logcat -c
+adb shell am start -n $PKG/.MainActivity --ez crear_prueba true
+sleep 2
+adb shell input keyevent KEYCODE_HOME
+creada=""
+for s in $(seq 1 15); do
+  sleep 1
+  creada=$(adb logcat -d -s Mascotas | grep -o "creada: .*" | head -1)
+  [ -n "$creada" ] && break
+done
+sleep 4
+adb exec-out screencap -p > shots/creada.png
+despues_crear=$(ventanas contar $PKG)
+adb logcat -d -s Mascotas > shots/creada.txt
+echo "::notice title=Crear desde un dibujo::${creada:-no se creó}; mascotas visibles $antes_crear → $despues_crear"
+if [ -z "$creada" ]; then echo "::error::No se pudo crear la mascota desde un dibujo"; grep -A5 "crear:" shots/creada.txt; fail=1; fi
+if [ "$despues_crear" -le "$antes_crear" ]; then echo "::error::La mascota creada no apareció en pantalla"; fail=1; fi
+# El widget está registrado
+widget=$(adb shell dumpsys appwidget | grep -c "MascotasWidget")
+echo "::notice title=Widget::registrado $widget veces en dumpsys appwidget"
+if [ "$widget" -lt 1 ]; then echo "::error::El widget no está registrado"; fail=1; fi
 hz=100
 if [ -z "$c0$c1" ] || [ -z "$c2" ] || [ -z "$c3" ]; then
   echo "::warning::No se pudo medir el tiempo de CPU"; c0=0; c1=0; c2=0; c3=0
@@ -151,4 +174,10 @@ adb shell dumpsys activity services $PKG > shots/servicio.txt
 grep -q PetService shots/servicio.txt || { echo "::error::El servicio de mascotas no está corriendo"; fail=1; }
 adb logcat -d > shots/logcat.txt
 if grep -n -A40 "FATAL EXCEPTION" shots/logcat.txt; then fail=1; fi
+# Botón "Quitar" del widget (y del atajo): se van todas
+adb shell am start -n $PKG/.AccionActivity -a com.billkevin91.mascota.atajo.QUITAR
+sleep 4
+quedan=$(ventanas contar $PKG)
+echo "::notice title=Quitar (widget)::quedan $quedan mascotas"
+if [ "$quedan" -ne 0 ]; then echo "::error::El botón Quitar del widget no las quitó ($quedan)"; fail=1; fi
 exit $fail

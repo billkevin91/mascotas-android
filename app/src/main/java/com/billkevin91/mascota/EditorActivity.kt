@@ -33,6 +33,9 @@ import kotlin.math.roundToInt
  * Mientras estás aquí, como en "Probar movimientos", sólo se mueve la mascota de prueba.
  */
 class EditorActivity : Activity() {
+    companion object {
+        private const val PICK_SOUND = 9
+    }
 
     private val green = Color.rgb(62, 125, 46)
     private var entries = emptyList<PetEntry>()
@@ -57,6 +60,17 @@ class EditorActivity : Activity() {
     private lateinit var repeat: EditText
     private lateinit var repeatFrom: EditText
     private lateinit var status: TextView
+
+    // Opciones avanzadas del movimiento elegido
+    private lateinit var advancedBox: LinearLayout
+    private lateinit var author: EditText
+    private lateinit var info: EditText
+    private var onEnd = ArrayList<Next>()
+    private var onBorder = ArrayList<Next>()
+    private var onGravity = ArrayList<Next>()
+    private var kids = ArrayList<ChildDef>()
+    private var sound: Sound? = null
+    private var soundChanged = false
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).roundToInt()
 
@@ -121,6 +135,18 @@ class EditorActivity : Activity() {
         col.addView(pair("veces", repeat, "desde el dibujo nº", repeatFrom))
         col.addView(small("Admiten fórmulas como en desktopPet, por ejemplo 5+random/10 (random va de 0 a 99)."))
 
+        val toggle = Button(this).apply { text = "Opciones avanzadas ▾"; isAllCaps = false }
+        advancedBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
+        toggle.setOnClickListener {
+            val show = advancedBox.visibility != View.VISIBLE
+            advancedBox.visibility = if (show) View.VISIBLE else View.GONE
+            toggle.text = if (show) "Opciones avanzadas ▴" else "Opciones avanzadas ▾"
+        }
+        col.addView(toggle)
+        col.addView(advancedBox)
+        author = EditText(this).apply { isSingleLine = true }
+        info = EditText(this)
+
         status = small("")
         col.addView(status)
         val buttons = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -145,7 +171,7 @@ class EditorActivity : Activity() {
 
         setContentView(ScrollView(this).apply { fitsSystemWindows = true; addView(col) })
         // Al escribir en cualquier campo hay cambios sin guardar
-        for (e in listOf(nameEdit, startMs, endMs, startX, endX, startY, endY, repeat, repeatFrom)) {
+        for (e in listOf(nameEdit, startMs, endMs, startX, endX, startY, endY, repeat, repeatFrom, author, info)) {
             e.addTextChangedListener(object : android.text.TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
                 override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
@@ -182,6 +208,8 @@ class EditorActivity : Activity() {
                 dirty = false
                 filling = true
                 nameEdit.setText(d.header.petName.ifEmpty { d.title })
+                author.setText(d.header.author)
+                info.setText(d.header.info)
                 filling = false
                 val anims = d.animations.values.sortedBy { it.id }
                 animSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, anims.map { "${it.id} · ${it.name}" })
@@ -212,6 +240,176 @@ class EditorActivity : Activity() {
         filling = false
         dirty = false
         showSequence()
+        val adv = PetEdit.advancedOf(d, id)
+        onEnd = ArrayList(adv.onEnd); onBorder = ArrayList(adv.onBorder); onGravity = ArrayList(adv.onGravity)
+        kids = ArrayList(adv.children)
+        sound = adv.sound
+        soundChanged = false
+        showAdvanced()
+    }
+
+    // ---- Opciones avanzadas ----
+
+    /** Dónde tiene que estar para que valga ese "siguiente" (atributo only de desktopPet). */
+    private val places = listOf(
+        Only.NONE to "siempre", Only.TASKBAR to "en el suelo", Only.VERTICAL to "en una pared",
+        Only.HORIZONTAL to "en el techo", Only.PET_SIDE to "junto a otra mascota",
+        Only.HORIZONTAL_PLUS to "techo o suelo", Only.VERTICAL_PLUS to "pared o mascota",
+        Only.WINDOW to "sobre una ventana", Only.WINDOW_SIDE to "junto a una ventana",
+    )
+
+    private fun showAdvanced() {
+        val d = def ?: return
+        advancedBox.removeAllViews()
+        advancedBox.addView(small("La probabilidad es un peso: con 30 y 10, el primero sale 3 de cada 4 veces. " +
+            "\"Dónde\" dice cuándo vale: por ejemplo, \"en el suelo\" sólo si ha terminado pisando el suelo."))
+        nextList("Al terminar, pasa a", onEnd)
+        nextList("Al chocar con un borde o con otra mascota, pasa a", onBorder)
+        nextList("Si se queda sin suelo, pasa a", onGravity)
+
+        advancedBox.addView(label("Crías (aparecen al empezar este movimiento: la tina, una flor...)"))
+        kids.forEachIndexed { i, c ->
+            val x = expr().apply { setText(c.x.text) }
+            val y = expr().apply { setText(c.y.text) }
+            val next = animPicker(c.next)
+            fun update() {
+                kids[i] = ChildDef(Value(x.text.toString()), Value(y.text.toString()), animAt(next.selectedItemPosition))
+                dirty = true
+            }
+            watch(x) { update() }; watch(y) { update() }
+            next.onItemSelectedListener = listener { if (animAt(it) != kids[i].next) update() }
+            advancedBox.addView(pair("x (imageX = la madre)", x, "y (imageY = la madre)", y))
+            advancedBox.addView(row(next, remove { kids.removeAt(i); dirty = true; showAdvanced() }))
+        }
+        advancedBox.addView(Button(this).apply {
+            text = "+ Añadir cría"; isAllCaps = false
+            setOnClickListener { kids.add(ChildDef(Value("imageX"), Value("imageY"), animId)); dirty = true; showAdvanced() }
+        })
+
+        advancedBox.addView(label("Sonido al empezar este movimiento"))
+        val s = sound
+        advancedBox.addView(small(if (s == null) "Sin sonido" else "Tiene sonido (${s.base64.length * 3 / 4 / 1024} KB)"))
+        if (s != null) {
+            val prob = number().apply { setText(s.probability.toString()) }
+            val loops = number().apply { setText(s.loop.toString()) }
+            fun update() {
+                sound = Sound(animId, prob.text.toString().toIntOrNull() ?: -1, loops.text.toString().toIntOrNull() ?: -1, s.base64)
+                soundChanged = true; dirty = true
+            }
+            watch(prob) { update() }; watch(loops) { update() }
+            advancedBox.addView(pair("probabilidad (%)", prob, "repeticiones", loops))
+        }
+        val soundButtons = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        soundButtons.addView(Button(this).apply {
+            text = if (s == null) "Elegir sonido" else "Cambiar"; isAllCaps = false
+            setOnClickListener {
+                startActivityForResult(Intent(Intent.ACTION_GET_CONTENT).setType("audio/*").addCategory(Intent.CATEGORY_OPENABLE), PICK_SOUND)
+            }
+        })
+        if (s != null) {
+            soundButtons.addView(Button(this).apply { text = "Escuchar"; isAllCaps = false; setOnClickListener { listen(s) } })
+            soundButtons.addView(Button(this).apply {
+                text = "Quitar"; isAllCaps = false
+                setOnClickListener { sound = null; soundChanged = true; dirty = true; showAdvanced() }
+            })
+        }
+        advancedBox.addView(soundButtons)
+
+        advancedBox.addView(label("De la mascota"))
+        advancedBox.addView(TextView(this).apply { text = "Autor"; textSize = 12f })
+        (author.parent as? LinearLayout)?.removeView(author)
+        advancedBox.addView(author)
+        advancedBox.addView(TextView(this).apply { text = "Descripción"; textSize = 12f })
+        (info.parent as? LinearLayout)?.removeView(info)
+        advancedBox.addView(info)
+    }
+
+    private fun nextList(title: String, list: ArrayList<Next>) {
+        advancedBox.addView(label(title))
+        if (list.isEmpty()) advancedBox.addView(small("(nada)"))
+        list.forEachIndexed { i, n ->
+            val anim = animPicker(n.id)
+            val prob = number().apply { setText(n.probability.toString()) }
+            val place = Spinner(this).apply {
+                adapter = ArrayAdapter(this@EditorActivity, android.R.layout.simple_spinner_dropdown_item, places.map { it.second })
+                setSelection(places.indexOfFirst { it.first == n.only }.coerceAtLeast(0))
+            }
+            fun update() {
+                list[i] = Next(animAt(anim.selectedItemPosition), prob.text.toString().toIntOrNull() ?: -1, places[place.selectedItemPosition].first)
+                dirty = true
+            }
+            anim.onItemSelectedListener = listener { if (animAt(it) != list[i].id) update() }
+            place.onItemSelectedListener = listener { if (places[it].first != list[i].only) update() }
+            watch(prob) { update() }
+            advancedBox.addView(row(anim, remove { list.removeAt(i); dirty = true; showAdvanced() }))
+            advancedBox.addView(LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                addView(TextView(this@EditorActivity).apply { text = "probabilidad "; textSize = 12f })
+                addView(prob, LinearLayout.LayoutParams(dp(72), LinearLayout.LayoutParams.WRAP_CONTENT))
+                addView(TextView(this@EditorActivity).apply { text = "  dónde "; textSize = 12f })
+                addView(place, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            })
+        }
+        advancedBox.addView(Button(this).apply {
+            text = "+ Añadir"; isAllCaps = false
+            setOnClickListener { list.add(Next(animId, 10, Only.NONE)); dirty = true; showAdvanced() }
+        })
+    }
+
+    private fun sortedAnims() = def?.animations?.values?.sortedBy { it.id }.orEmpty()
+    private fun animAt(pos: Int) = sortedAnims().getOrNull(pos)?.id ?: animId
+
+    private fun animPicker(id: Int) = Spinner(this).apply {
+        val anims = sortedAnims()
+        adapter = ArrayAdapter(this@EditorActivity, android.R.layout.simple_spinner_dropdown_item, anims.map { "${it.id} · ${it.name}" })
+        setSelection(anims.indexOfFirst { it.id == id }.coerceAtLeast(0))
+    }
+
+    private fun row(main: View, end: View) = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        addView(main, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        addView(end)
+    }
+
+    private fun remove(onClick: () -> Unit) = Button(this).apply { text = "✖"; setOnClickListener { onClick() } }
+
+    private fun watch(e: EditText, onChange: () -> Unit) {
+        e.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) { if (!filling) onChange() }
+        })
+    }
+
+    private var player: android.media.MediaPlayer? = null
+
+    private fun listen(s: Sound) {
+        runCatching {
+            player?.release()
+            val f = java.io.File(cacheDir, "escuchar")
+            f.writeBytes(android.util.Base64.decode(s.base64.substringAfter(";base64,"), android.util.Base64.DEFAULT))
+            player = android.media.MediaPlayer().apply { setDataSource(f.path); prepare(); start() }
+        }.onFailure { Toast.makeText(this, "No se pudo reproducir", Toast.LENGTH_SHORT).show() }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != PICK_SOUND || resultCode != RESULT_OK) return
+        val uri = data?.data ?: return
+        val bytes = runCatching { contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
+        if (bytes == null || bytes.isEmpty()) { Toast.makeText(this, "No se pudo leer el sonido", Toast.LENGTH_SHORT).show(); return }
+        val b64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+        if (b64.length > PetEdit.MAX_SOUND) { Toast.makeText(this, "Es demasiado largo (máximo ~1,5 MB)", Toast.LENGTH_LONG).show(); return }
+        sound = Sound(animId, sound?.probability ?: 100, sound?.loop ?: 0, b64)
+        soundChanged = true
+        dirty = true
+        showAdvanced()
+    }
+
+    override fun onDestroy() {
+        player?.release()
+        super.onDestroy()
     }
 
     private fun showSequence() {
@@ -291,7 +489,15 @@ class EditorActivity : Activity() {
         var name = nameEdit.text.toString().trim().ifEmpty { entry.name }
         // Las incluidas se guardan como copia tuya (con otro nombre para no confundirlas)
         if (entry.bundled && name == entry.name) name = "${entry.name} (mía)"
-        val edited = PetEdit.renamed(PetEdit.withFields(d, animId, f), name)
+        val adv = PetEdit.Advanced(onEnd.toList(), onBorder.toList(), onGravity.toList(), kids.toList(), sound, soundChanged)
+        PetEdit.checkAdvanced(d, adv)?.let { msg ->
+            AlertDialog.Builder(this).setTitle("Revisa las opciones avanzadas").setMessage(msg).setPositiveButton("Vale", null).show()
+            return
+        }
+        val edited = PetEdit.withInfo(
+            PetEdit.renamed(PetEdit.withAdvanced(PetEdit.withFields(d, animId, f), animId, adv), name),
+            author.text.toString().trim(), info.text.toString().trim(),
+        )
         val target = if (entry.bundled) {
             // Si ya hay una copia tuya con ese nombre, se guarda encima
             PetLibrary.all(this).firstOrNull { !it.bundled && it.name.equals(name, true) }?.id
@@ -313,6 +519,7 @@ class EditorActivity : Activity() {
                         petSpinner.setSelection(entries.indexOfFirst { it.id == petId }.coerceAtLeast(0))
                     }
                     def = edited
+                    soundChanged = false
                     status.text = "Guardada como \"${e.name}\"" + if (test) ". Mírala en la pantalla." else ""
                     if (test) PetService.play(this, e.id, anim, loop = true)
                 }.onFailure { err ->
