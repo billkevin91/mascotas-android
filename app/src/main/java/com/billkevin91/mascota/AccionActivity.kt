@@ -31,7 +31,7 @@ class AccionActivity : Activity() {
                     PetService.add(this, pet, prefs.getFloat(MainActivity.PREF_SIZE, 1f))
                 } else {
                     Toast.makeText(this, tr("Primero da permiso para mostrarse sobre otras apps", "First allow it to display over other apps"), Toast.LENGTH_LONG).show()
-                    startActivity(Intent(this, MainActivity::class.java))
+                    startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 }
             }
         }

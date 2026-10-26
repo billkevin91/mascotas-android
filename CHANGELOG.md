@@ -2,7 +2,7 @@
 
 Todos los cambios de la app, del más nuevo al más antiguo.
 
-## [Sin publicar]
+## 1.6 — 2026-10-26
 
 ### Añadido
 - **Compartir mascotas**: "Compartir" (WhatsApp, correo...) y "Guardar como archivo" su
@@ -15,6 +15,19 @@ Todos los cambios de la app, del más nuevo al más antiguo.
   notificación, widget, atajos y créditos).
 - Pruebas: idioma (LangTest); en el emulador, compartir, ocultarse a pantalla completa y que la
   pantalla principal salga en inglés.
+
+### Corregido (revisión del código)
+- Editor avanzado: una cría que repetía el mismo movimiento de su madre (lo que salía de primeras al
+  pulsar "+ Añadir cría") se multiplicaba sin fin. Ahora no se permite, la cría nueva empieza con otro
+  movimiento y el servicio tiene un tope de 30 crías.
+- "Guardar como archivo" recuerda qué mascota era aunque Android cierre la app mientras eliges
+  dónde; si no hay explorador de archivos, avisa en vez de cerrarse.
+- Con el máximo de mascotas alcanzado, un aviso lo dice (antes no pasaba nada).
+- A pantalla completa también se esconden la comida y los corazones.
+- En inglés: el aviso de "escena entera" en Probar movimientos, "(none)", y tamaños, velocidades y
+  nombres que cambian si cambias el idioma del teléfono.
+- Ajustes: las barras se guardan también con teclado o TalkBack.
+- El widget sin permiso abre la app en su propia ventana.
 
 ### Mejorado
 - Código depurado: órdenes de la prueba automática juntas en un solo sitio, comentarios al día,

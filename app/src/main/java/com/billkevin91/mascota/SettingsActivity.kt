@@ -89,9 +89,14 @@ class SettingsActivity : Activity() {
             this.max = max - min
             progress = current - min
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(s: SeekBar?, p: Int, fromUser: Boolean) { value.text = show(p + min) }
-                override fun onStartTrackingTouch(s: SeekBar?) {}
-                override fun onStopTrackingTouch(s: SeekBar?) { prefs.edit().putInt(key, progress + min).apply() }
+                override fun onProgressChanged(s: SeekBar?, p: Int, fromUser: Boolean) {
+                    value.text = show(p + min)
+                    // Con el dedo se guarda al soltar; con teclado o TalkBack, al momento
+                    if (fromUser && !dragging) prefs.edit().putInt(key, p + min).apply()
+                }
+                private var dragging = false
+                override fun onStartTrackingTouch(s: SeekBar?) { dragging = true }
+                override fun onStopTrackingTouch(s: SeekBar?) { dragging = false; prefs.edit().putInt(key, progress + min).apply() }
             })
         }
         return LinearLayout(this).apply {

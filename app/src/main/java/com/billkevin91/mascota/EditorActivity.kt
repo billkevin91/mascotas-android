@@ -77,7 +77,7 @@ class EditorActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         entries = PetLibrary.all(this)
-        petId = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE).getString(MainActivity.PREF_PET, null)
+        petId = (savedInstanceState?.getString("mascota") ?: getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE).getString(MainActivity.PREF_PET, null))
             ?.takeIf { id -> entries.any { it.id == id } } ?: PetLibrary.BUNDLED.first()
 
         val col = LinearLayout(this).apply {
@@ -170,7 +170,10 @@ class EditorActivity : Activity() {
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         shareRow.addView(Button(this).apply {
             text = tr("Guardar como archivo", "Save as file"); isAllCaps = false
-            setOnClickListener { if (savedFirst()) PetShare.askWhere(this@EditorActivity, petId) }
+            setOnClickListener {
+                if (savedFirst() && !PetShare.askWhere(this@EditorActivity, petId))
+                    Toast.makeText(this@EditorActivity, tr("No hay explorador de archivos", "There's no file browser"), Toast.LENGTH_SHORT).show()
+            }
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         col.addView(shareRow)
         col.addView(Button(this).apply {
@@ -184,6 +187,12 @@ class EditorActivity : Activity() {
         for (e in listOf(nameEdit, startMs, endMs, startX, endX, startY, endY, repeat, repeatFrom, author, info)) {
             watch(e) { dirty = true }
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        // La mascota elegida (si Android cierra la app mientras eliges dónde guardarla)
+        outState.putString("mascota", petId)
     }
 
     override fun onStart() {
@@ -289,7 +298,13 @@ class EditorActivity : Activity() {
         }
         advancedBox.addView(Button(this).apply {
             text = tr("+ Añadir cría", "+ Add offspring"); isAllCaps = false
-            setOnClickListener { kids.add(ChildDef(Value("imageX"), Value("imageY"), animId)); dirty = true; showAdvanced() }
+            setOnClickListener {
+                // De primeras, un movimiento que termina solo y no tiene crías (no éste: se multiplicarían)
+                val d = def ?: return@setOnClickListener
+                val first = sortedAnims().firstOrNull { it.id != animId && it.onEnd.isEmpty() && d.children[it.id].isNullOrEmpty() }
+                    ?: sortedAnims().firstOrNull { it.id != animId && d.children[it.id].isNullOrEmpty() } ?: return@setOnClickListener
+                kids.add(ChildDef(Value("imageX"), Value("imageY"), first.id)); dirty = true; showAdvanced()
+            }
         })
 
         advancedBox.addView(label(tr("Sonido al empezar este movimiento", "Sound when this movement starts")))
@@ -332,7 +347,7 @@ class EditorActivity : Activity() {
 
     private fun nextList(title: String, list: ArrayList<Next>) {
         advancedBox.addView(label(title))
-        if (list.isEmpty()) advancedBox.addView(small("(nada)"))
+        if (list.isEmpty()) advancedBox.addView(small(tr("(nada)", "(none)")))
         list.forEachIndexed { i, n ->
             val anim = animPicker(n.id)
             val prob = number().apply { setText(n.probability.toString()) }
@@ -502,7 +517,7 @@ class EditorActivity : Activity() {
         // Las incluidas se guardan como copia tuya (con otro nombre para no confundirlas)
         if (entry.bundled && name == entry.name) name = tr("${entry.name} (mía)", "${entry.name} (mine)")
         val adv = PetEdit.Advanced(onEnd.toList(), onBorder.toList(), onGravity.toList(), kids.toList(), sound, soundChanged)
-        PetEdit.checkAdvanced(d, adv)?.let { msg ->
+        PetEdit.checkAdvanced(d, animId, adv)?.let { msg ->
             AlertDialog.Builder(this).setTitle(tr("Revisa las opciones avanzadas", "Check the advanced options")).setMessage(msg).setPositiveButton(tr("Vale", "OK"), null).show()
             return
         }

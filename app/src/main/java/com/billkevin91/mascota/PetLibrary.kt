@@ -21,7 +21,7 @@ class ImportResult(val entry: PetEntry, val replaced: Boolean)
 object PetLibrary {
     /** Carpetas en assets/pets (mascotas de desktopPet). */
     val BUNDLED = listOf("esheep64", "blue_sheep", "pink_sheep", "neko", "pink_neko", "fox", "pink_fox")
-    private val NAMES = mapOf(
+    private val NAMES get() = mapOf(
         "esheep64" to "eSheep", "blue_sheep" to tr("Oveja azul", "Blue sheep"), "pink_sheep" to tr("Oveja rosa", "Pink sheep"),
         "neko" to "Neko", "pink_neko" to tr("Neko rosa", "Pink Neko"), "fox" to tr("Zorrito", "Fox"), "pink_fox" to tr("Zorrito rosa", "Pink fox"),
     )

@@ -56,6 +56,7 @@ class PetService : Service() {
         private const val CHANNEL = "mascotas"
         private const val TAG = "Mascotas"
         private const val MAX_FOOD = 5
+        private const val MAX_CHILDREN = 30
         private const val MAX_HEARTS = 8
         /** Con el dedo quieto encima este tiempo, se levanta (como antes al tocarla). */
         private const val HOLD_MS = 250L
@@ -420,7 +421,7 @@ class PetService : Service() {
     }
 
     /** Se mueve sólo lo que se ve: nada con la pantalla apagada; en modo prueba, sólo la de prueba. */
-    private fun shouldRun(p: PetWindow) = !asleep && !(hideFullscreen && fullscreen) && (!testMode || p.test)
+    private fun shouldRun(p: PetWindow) = onView() && (!testMode || p.test)
 
     /**
      * Ventanita invisible de 1 píxel que se entera de si la barra de estado está oculta:
@@ -457,12 +458,21 @@ class PetService : Service() {
         syncPaused()
     }
 
+    /** Se ve algo nuestro ahora (no con la pantalla apagada ni con un juego o vídeo a pantalla completa). */
+    private fun onView() = !asleep && !(hideFullscreen && fullscreen)
+
     private fun syncPaused() {
         for (p in ArrayList(pets)) if (shouldRun(p)) p.resume() else p.pause()
+        // La comida también se esconde (y los corazones no salen: ver showHearts)
+        for (f in foods) f.hidden(!onView())
     }
 
     private fun addPet(folder: String, size: Float, test: Boolean = false): PetWindow? {
-        if (!test && pets.count { !it.brain.isChild && !it.test } >= maxPets) return null
+        if (!test && pets.count { !it.brain.isChild && !it.test } >= maxPets) {
+            android.widget.Toast.makeText(this, tr("Ya hay $maxPets mascotas: es el máximo (se cambia en Ajustes)",
+                "There are already $maxPets pets: that's the maximum (change it in Settings)"), android.widget.Toast.LENGTH_LONG).show()
+            return null
+        }
         if (!PetLibrary.exists(this, folder)) return null
         val def = defs.getOrPut(folder) { PetLibrary.load(this, folder) }
         val sheet = sheets.getOrPut(folder) { PetLibrary.sheet(def) }
@@ -503,7 +513,7 @@ class PetService : Service() {
 
     /** Corazoncitos (o [emoji], si se da) que suben y se desvanecen: caricias, comida y reacciones. */
     private fun showHearts(cx: Int, top: Int, emoji: String? = null) {
-        if (hearts.size >= MAX_HEARTS) return
+        if (hearts.size >= MAX_HEARTS || !onView()) return
         val d = resources.displayMetrics.density
         val w = (64 * d).toInt()
         val h = (90 * d).toInt()
@@ -656,6 +666,7 @@ class PetService : Service() {
             android.util.Log.i(TAG, "comida: cae $emoji (${if (attached) "en pantalla" else "no se pudo mostrar"})")
             if (!attached) return
             foods.add(this)
+            hidden(!onView())
             handler.postDelayed(expire, 3 * 60_000L)
             drop()
         }
@@ -675,6 +686,10 @@ class PetService : Service() {
             params.x = x.roundToInt()
             params.y = y.roundToInt()
             runCatching { wm.updateViewLayout(view, params) }
+        }
+
+        fun hidden(h: Boolean) {
+            view.visibility = if (h) View.GONE else View.VISIBLE
         }
 
         /** En el suelo y sin arrastrar: ya se puede ir a por ella. */
@@ -816,6 +831,8 @@ class PetService : Service() {
                     pets.filter { it.parent === this@PetWindow && it.brain.remainingMs() < 300 }.forEach { it.dismiss() }
                 }
                 for (c in brain.takeChildren()) {
+                    // Tope por si un XML hace crías que hacen crías sin parar
+                    if (pets.count { it.brain.isChild } >= MAX_CHILDREN) break
                     val cb = PetBrain(brain.def, brain.area, brain.frameW, brain.frameH, c)
                     cb.scale = scale
                     cb.others = ::allBrains

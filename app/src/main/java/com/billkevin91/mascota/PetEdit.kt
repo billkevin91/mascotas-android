@@ -97,7 +97,7 @@ object PetEdit {
     /** Tamaño máximo de un sonido (en base64): ~1,5 MB de mp3. */
     const val MAX_SOUND = 2_000_000
 
-    fun checkAdvanced(def: PetDef, adv: Advanced): String? {
+    fun checkAdvanced(def: PetDef, id: Int, adv: Advanced): String? {
         for ((label, list) in listOf(tr("Al terminar", "When it ends") to adv.onEnd, tr("Al chocar", "When it hits") to adv.onBorder, tr("Sin suelo", "No floor") to adv.onGravity)) {
             for (n in list) {
                 if (n.id !in def.animations) return tr("$label: el movimiento ${n.id} no existe", "$label: movement ${n.id} doesn't exist")
@@ -113,6 +113,10 @@ object PetEdit {
                 }
             }
             if (c.next !in def.animations) return tr("Cría ${i + 1}: el movimiento ${c.next} no existe", "Offspring ${i + 1}: movement ${c.next} doesn't exist")
+            // Si la cría hiciera este mismo movimiento (o uno con crías), cada una sacaría otra más
+            if (c.next == id || !def.children[c.next].isNullOrEmpty())
+                return tr("Cría ${i + 1}: tiene que hacer otro movimiento, sin crías (si no, se multiplican)",
+                    "Offspring ${i + 1}: it must do another movement, one without offspring (otherwise they multiply)")
         }
         adv.sound?.let {
             if (it.probability !in 0..100) return tr("Sonido: la probabilidad va de 0 a 100", "Sound: the probability goes from 0 to 100")

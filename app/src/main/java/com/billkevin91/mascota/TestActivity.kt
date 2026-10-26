@@ -24,7 +24,7 @@ import kotlin.math.roundToInt
 /** Modo prueba: elegir cualquier movimiento del XML y ver cómo lo hace la mascota. */
 class TestActivity : Activity() {
 
-    private class Move(val id: Int, val name: String, val detail: String) {
+    private class Move(val id: Int, val name: String, val detail: String, val partOfScene: Boolean = false) {
         override fun toString() = "$id · $name\n$detail"
     }
 
@@ -125,7 +125,7 @@ class TestActivity : Activity() {
             }
             PetService.play(this, pet, m.id, loop.isChecked)
             status.text = tr("Haciendo: ${m.id} · ${m.name}", "Doing: ${m.id} · ${m.name}") + if (loop.isChecked) tr(" (repitiendo)", " (repeating)") else ""
-            if (m.detail.contains(tr("parte de la escena", "part of the scene"))) status.append(tr(" — se ve la escena entera", " — the whole scene is shown"))
+            if (m.partOfScene) status.append(tr(" — se ve la escena entera", " — the whole scene is shown"))
         }
         col.addView(list, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
 
@@ -170,7 +170,7 @@ class TestActivity : Activity() {
                     scene.size > 1 -> parts.add(tr("escena: ", "scene: ") + scene.joinToString(" → ") { names[it]?.name.orEmpty() })
                     else -> (a.onEnd.firstOrNull()?.let { names[it.id]?.name })?.let { parts.add(tr("luego $it", "then $it")) }
                 }
-                Move(a.id, a.name, parts.joinToString(" · "))
+                Move(a.id, a.name, parts.joinToString(" · "), partOfScene = start != a.id)
             }.orEmpty()
             runOnUiThread {
                 if (folder != pet) return@runOnUiThread

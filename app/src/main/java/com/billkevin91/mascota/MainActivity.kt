@@ -36,8 +36,8 @@ class MainActivity : Activity() {
         const val PREF_CLOCK = "follow_clock"
         const val PREF_REACT = "react_phone"
         private const val IMPORT = 7
-        private val SIZES = listOf(tr("Pequeña", "Small") to 0.75f, tr("Mediana", "Medium") to 1f, tr("Grande", "Large") to 1.5f, tr("Enorme", "Huge") to 2f)
-        private val SPEEDS = listOf(tr("Lenta", "Slow") to 0.5f, tr("Tranquila", "Calm") to 0.75f, tr("Normal", "Normal") to 1f, tr("Rápida", "Fast") to 1.25f)
+        private val SIZES get() = listOf(tr("Pequeña", "Small") to 0.75f, tr("Mediana", "Medium") to 1f, tr("Grande", "Large") to 1.5f, tr("Enorme", "Huge") to 2f)
+        private val SPEEDS get() = listOf(tr("Lenta", "Slow") to 0.5f, tr("Tranquila", "Calm") to 0.75f, tr("Normal", "Normal") to 1f, tr("Rápida", "Fast") to 1.25f)
 
         /** Botones de velocidad (se guardan y el servicio la aplica al momento). */
         /** Echa comida si hay mascotas paseando; si no, avisa. Devuelve si la echó. */
@@ -92,6 +92,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        savingId = savedInstanceState?.getString("guardando")
         val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
         pet = prefs.getString(PREF_PET, null)?.takeIf { PetLibrary.exists(this, it) } ?: PetLibrary.BUNDLED.first()
         size = prefs.getFloat(PREF_SIZE, 1f)
@@ -123,7 +124,7 @@ class MainActivity : Activity() {
         removeButton.visibility = if (PetLibrary.all(this).any { !it.bundled }) View.VISIBLE else View.GONE
         col.addView(removeButton)
         col.addView(text(tr("Sirven las de desktopPet y las que hagas con su PetEditor. Si importas una con ", "desktopPet pets and the ones you make with its PetEditor work. If you import one with ") +
-            tr("el mismo nombre que otra tuya, se reemplaza. También puedes quitar una manteniéndola pulsada.", "the same name as one of yours, it's replaced. Hold a pet down to share it or remove it."))
+            tr("el mismo nombre que otra tuya, se reemplaza. Mantén pulsada una mascota para compartirla o quitarla.", "the same name as one of yours, it's replaced. Hold a pet down to share it or remove it."))
             .apply { textSize = 12f; alpha = 0.6f })
 
         col.addView(title(tr("Tamaño", "Size")))
@@ -219,6 +220,12 @@ class MainActivity : Activity() {
             if (PetLibrary.exists(this, p)) PetService.play(this, p, id, true)
         }
         return true
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        // Si Android cierra la app mientras eliges dónde guardar, al volver se sabe qué mascota era
+        savingId?.let { outState.putString("guardando", it) }
     }
 
     override fun onResume() {
@@ -387,7 +394,11 @@ class MainActivity : Activity() {
                     .setItems(options.toTypedArray()) { _, which ->
                         when (which) {
                             0 -> runCatching { PetShare.share(this@MainActivity, folder) }
-                            1 -> { savingId = folder; PetShare.askWhere(this@MainActivity, folder) }
+                            1 -> {
+                                savingId = folder
+                                if (!PetShare.askWhere(this@MainActivity, folder)) Toast.makeText(this@MainActivity,
+                                    tr("No hay explorador de archivos", "There's no file browser"), Toast.LENGTH_SHORT).show()
+                            }
                             2 -> AlertDialog.Builder(this@MainActivity).setTitle(tr("¿Quitar ${e.name}?", "Remove ${e.name}?"))
                                 .setMessage(tr("Se borra la mascota importada de este teléfono.", "The pet is deleted from this phone."))
                                 .setPositiveButton(tr("Quitar", "Remove")) { _, _ -> delete(listOf(folder)) }

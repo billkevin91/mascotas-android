@@ -46,13 +46,13 @@ object PetShare {
         activity.startActivity(Intent.createChooser(send, Lang.t("Compartir $name", "Share $name")))
     }
 
-    /** Pregunta dónde guardar el archivo; luego llamar a [saveTo] con lo que devuelva. */
-    fun askWhere(activity: Activity, id: String) {
+    /** Pregunta dónde guardar el archivo; luego llamar a [saveTo] con lo que devuelva. Devuelve si se pudo preguntar. */
+    fun askWhere(activity: Activity, id: String): Boolean {
         val intent = Intent(Intent.ACTION_CREATE_DOCUMENT)
             .addCategory(Intent.CATEGORY_OPENABLE)
             .setType("text/xml")
             .putExtra(Intent.EXTRA_TITLE, fileName(PetLibrary.name(activity, id)))
-        activity.startActivityForResult(intent, SAVE_REQUEST)
+        return runCatching { activity.startActivityForResult(intent, SAVE_REQUEST) }.isSuccess
     }
 
     fun saveTo(context: Context, id: String, uri: Uri) {

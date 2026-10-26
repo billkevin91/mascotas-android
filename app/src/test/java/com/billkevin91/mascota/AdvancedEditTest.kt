@@ -20,7 +20,7 @@ class AdvancedEditTest {
     fun cambiarQueHaceDespuesSeNota() {
         // Que al terminar de caminar siempre se duerma
         val a = with(adv(sheep, walk), onEnd = listOf(Next(sleep, 100, Only.NONE)))
-        assertNull(PetEdit.checkAdvanced(sheep, a))
+        assertNull(PetEdit.checkAdvanced(sheep, walk, a))
         val edited = PetEdit.withAdvanced(sheep, walk, a)
         val w = World(seed = 1)
         val b = w.add(edited, start = false)
@@ -79,13 +79,17 @@ class AdvancedEditTest {
     @Test
     fun avisaDeErrores() {
         val base = adv(sheep, walk)
-        assertTrue(PetEdit.checkAdvanced(sheep, with(base, onEnd = listOf(Next(9999, 10, Only.NONE))))!!.contains("no existe"))
-        assertTrue(PetEdit.checkAdvanced(sheep, with(base, onEnd = listOf(Next(walk, 0, Only.NONE))))!!.contains("mayor que 0"))
-        assertTrue(PetEdit.checkAdvanced(sheep, with(base, onEnd = listOf(Next(walk, 5000, Only.NONE))))!!.contains("de 0 a 1000"))
-        assertTrue(PetEdit.checkAdvanced(sheep, with(base, children = listOf(ChildDef(Value("imageX+"), Value("0"), walk))))!!.contains("expresión"))
-        assertTrue(PetEdit.checkAdvanced(sheep, with(base, sound = Sound(walk, 150, 0, "AA"), soundChanged = true))!!.contains("0 a 100"))
-        assertTrue(PetEdit.checkAdvanced(sheep, with(base, sound = Sound(walk, 50, 0, "A".repeat(PetEdit.MAX_SOUND + 1)), soundChanged = true))!!.contains("largo"))
-        assertNull(PetEdit.checkAdvanced(sheep, base))
+        assertTrue(PetEdit.checkAdvanced(sheep, walk, with(base, onEnd = listOf(Next(9999, 10, Only.NONE))))!!.contains("no existe"))
+        assertTrue(PetEdit.checkAdvanced(sheep, walk, with(base, onEnd = listOf(Next(walk, 0, Only.NONE))))!!.contains("mayor que 0"))
+        assertTrue(PetEdit.checkAdvanced(sheep, walk, with(base, onEnd = listOf(Next(walk, 5000, Only.NONE))))!!.contains("de 0 a 1000"))
+        assertTrue(PetEdit.checkAdvanced(sheep, walk, with(base, children = listOf(ChildDef(Value("imageX+"), Value("0"), walk))))!!.contains("expresión"))
+        assertTrue(PetEdit.checkAdvanced(sheep, walk, with(base, sound = Sound(walk, 150, 0, "AA"), soundChanged = true))!!.contains("0 a 100"))
+        assertTrue(PetEdit.checkAdvanced(sheep, walk, with(base, sound = Sound(walk, 50, 0, "A".repeat(PetEdit.MAX_SOUND + 1)), soundChanged = true))!!.contains("largo"))
+        // Una cría que repite el mismo movimiento (o uno con crías) se multiplicaría sin fin
+        assertTrue(PetEdit.checkAdvanced(sheep, walk, with(base, children = listOf(ChildDef(Value("imageX"), Value("imageY"), walk))))!!.contains("multiplican"))
+        val eat = Pets.id(sheep, "eat")
+        assertTrue(PetEdit.checkAdvanced(sheep, walk, with(base, children = listOf(ChildDef(Value("imageX"), Value("imageY"), eat))))!!.contains("multiplican"))
+        assertNull(PetEdit.checkAdvanced(sheep, walk, base))
     }
 
     @Test
