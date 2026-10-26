@@ -808,14 +808,12 @@ class PetService : Service() {
             cb.speed = brain.speed
             cb.start()
             val w = PetWindow(cb, sheet, scale, folder, parent = this)
-            // Con su sitio en la pantalla, para que la prueba sepa dónde tocar
-            if (w.show()) handler.postDelayed({
-                android.util.Log.i(TAG, "flor: aparece en ${w.centerX().roundToInt()} ${w.top() + w.height() / 2}")
-            }, 3000)
+            if (w.show()) android.util.Log.i(TAG, "flor: aparece")
         }
 
         /** Una flor que tocaste: ahora es comida para las demás. */
         var treat = false
+        private var landedLogged = false
         private val born = SystemClock.uptimeMillis()
 
         /** Flores de las ovejas (flower, bloom...): se pueden comer y se marchitan antes. */
@@ -931,6 +929,11 @@ class PetService : Service() {
                 if (brain.finished) { remove(); return }
                 // En desktopPet una flor puede tardar ~8 minutos en marchitarse: aquí, como mucho 2
                 if (isFlower() && SystemClock.uptimeMillis() - born > MAX_FLOWER_MS) brain.kill()
+                // Dónde quedó (para la prueba automática, que la toca ahí)
+                if (isFlower() && !landedLogged && brain.y + brain.frameH >= brain.area.bottom - 2) {
+                    landedLogged = true
+                    android.util.Log.i(TAG, "flor: en el suelo en ${centerX().roundToInt()} ${params.y + params.height / 2}")
+                }
                 update(glideFor = delay.toLong())
                 refreshLabel()
                 handler.postDelayed(this, delay.toLong())
@@ -1192,6 +1195,7 @@ class PetService : Service() {
                             val now = SystemClock.uptimeMillis()
                             if (now - lastUp < ViewConfiguration.getDoubleTapTimeout()) {
                                 handler.removeCallbacks(offerFlower)
+                                android.util.Log.i(TAG, "cría quitada con doble toque: ${brain.animationName}")
                                 brain.kill()
                                 handler.removeCallbacks(tick)
                                 handler.post(tick)

@@ -44,17 +44,22 @@ echo "Mascotas visibles antes de apagar la pantalla: $antes" | tee shots/bateria
 # También el proceso del sistema: mover las ventanas de las mascotas lo hace él
 sys_cpu() { adb shell cat /proc/$(adb shell pidof system_server | tr -d '\r')/stat | awk '{print $14 + $15}'; }
 sleep 10  # que se calme el arranque
-s0=$(sys_cpu)
-c0=$(cpu); sleep 30; c1=$(cpu)
-s1=$(sys_cpu)
-sleep 2
+# Dos vueltas de 20 s con las mascotas a la vista y 20 s escondidas (una app a pantalla completa),
+# alternando para que lo que haga el sistema por su cuenta pese igual en las dos: la diferencia
+# es lo que cuestan las mascotas
+vis=0; hid=0; app=0
+for vuelta in 1 2; do
+  a=$(sys_cpu); b=$(cpu); sleep 20; a2=$(sys_cpu); b2=$(cpu)
+  vis=$(( vis + ${a2:-0} - ${a:-0} )); app=$(( app + ${b2:-0} - ${b:-0} ))
+  adb shell am start -n $PKG/.MainActivity -f 0x10008000 --ez pantalla_completa true > /dev/null
+  sleep 3
+  a=$(sys_cpu); sleep 20; a2=$(sys_cpu)
+  hid=$(( hid + ${a2:-0} - ${a:-0} ))
+  adb shell input keyevent KEYCODE_HOME
+  sleep 3
+done
 consumo=$(adb logcat -d -s Mascotas | grep -o "consumo: .*" | tail -1)
-# Lo mismo con las mascotas escondidas (una app a pantalla completa): la diferencia es lo que cuestan
-adb shell am start -n $PKG/.MainActivity -f 0x10008000 --ez pantalla_completa true
-sleep 4
-s2=$(sys_cpu); sleep 30; s3=$(sys_cpu)
-adb shell input keyevent KEYCODE_HOME
-sleep 3
+c0=0; c1=$app
 adb shell input keyevent KEYCODE_SLEEP
 sleep 3; c2=$(cpu); sleep 30; c3=$(cpu)
 # Al encender y desbloquear tienen que volver a verse
@@ -188,13 +193,21 @@ if [ -z "$compartido" ] || [ "$menu" -lt 1 ]; then echo "::error::No se pudo com
 adb shell input keyevent KEYCODE_BACK
 adb shell input keyevent KEYCODE_HOME
 sleep 2
-# Flor: le sale una flor a la oveja azul; un toque y alguna mascota va a comérsela
+# Flor: le sale una flor a la oveja azul; un toque y alguna mascota va a comérsela.
+# Luego otra flor, y con doble toque se quita.
+flor_en_suelo() {  # espera a que la app diga dónde quedó la flor en el suelo
+  local f=""
+  for s in $(seq 1 40); do
+    sleep 1
+    f=$(adb logcat -d -s Mascotas | grep -o "flor: en el suelo en [0-9-]* [0-9-]*" | tail -1 | awk '{print $6, $7}')
+    [ -n "$f" ] && break
+  done
+  echo "$f"
+}
 adb logcat -c
 adb shell am start -n $PKG/.MainActivity -f 0x10008000 --es flor blue_sheep
-sleep 6
+flor=$(flor_en_suelo)
 adb exec-out screencap -p > shots/flor.png
-# La app dice dónde quedó la flor
-flor=$(adb logcat -d -s Mascotas | grep -o "flor: aparece en [0-9-]* [0-9-]*" | tail -1 | awk '{print $4, $5}')
 [ -n "$flor" ] && adb shell input tap $flor
 flor_en=-1
 for s in $(seq 1 60); do
@@ -202,10 +215,19 @@ for s in $(seq 1 60); do
   if adb logcat -d -s Mascotas | grep -q "se la comió .*(flor)"; then flor_en=$s; break; fi
 done
 adb logcat -d -s Mascotas | grep -E "flor|comió" > shots/flor.txt
-echo "::notice title=Flor::$(tr '\n' ' ' < shots/flor.txt) — comida a los ${flor_en} s"
-if ! grep -q "flor: aparece" shots/flor.txt; then echo "::error::No salió la flor"; fail=1
+echo "Flor: $(tr '\n' ' ' < shots/flor.txt) — comida a los ${flor_en} s"
+if [ -z "$flor" ]; then echo "::error::La flor no llegó al suelo"; fail=1
 elif ! grep -q "lista para comer" shots/flor.txt; then echo "::error::Al tocar la flor no se volvió comida"; fail=1
 elif [ "$flor_en" -lt 0 ]; then echo "::error::Nadie se comió la flor en 1 minuto"; fail=1; fi
+adb logcat -c
+adb shell am start -n $PKG/.MainActivity -f 0x10008000 --es flor blue_sheep
+flor=$(flor_en_suelo)
+# Doble toque: dos toques a la vez desde el mismo shell
+[ -n "$flor" ] && adb shell "input tap $flor & input tap $flor; wait"
+sleep 3
+if adb logcat -d -s Mascotas | grep -q "cría quitada con doble toque"; then quitada=1; else quitada=0; fi
+echo "Flor con doble toque: quitada=$quitada (en $flor)"
+if [ "$quitada" -ne 1 ]; then echo "::warning::El doble toque a la flor no la quitó (puede ser el emulador: los dos toques no llegan a tiempo)"; fi
 # Idioma: el emulador está en inglés, así que la app tiene que salir en inglés
 adb shell am start -n $PKG/.MainActivity -f 0x10008000
 sleep 3
@@ -225,13 +247,13 @@ hz=100
 if [ -z "$c0$c1" ] || [ -z "$c2" ] || [ -z "$c3" ]; then
   echo "::warning::No se pudo medir el tiempo de CPU"; c0=0; c1=0; c2=0; c3=0
 fi
-on=$(( (c1 - c0) * 1000 / hz )); off=$(( (c3 - c2) * 1000 / hz ))
+on=$(( (c1 - c0) * 1000 / hz * 3 / 4 )); off=$(( (c3 - c2) * 1000 / hz ))  # "on": 40 s medidos, en 30 s
 {
   echo "CPU de la app en 30 s con 4 mascotas y la pantalla encendida: ${on} ms ($(( on / 300 ))% de un núcleo)"
   echo "CPU de la app en 30 s con la pantalla apagada: ${off} ms"
 } | tee -a shots/bateria.txt
-sistema=$(( (${s1:-0} - ${s0:-0}) * 1000 / hz ))
-sin=$(( (${s3:-0} - ${s2:-0}) * 1000 / hz ))
+sistema=$(( vis * 1000 / hz * 3 / 4 ))
+sin=$(( hid * 1000 / hz * 3 / 4 ))
 echo "Sistema en esos 30 s: ${sistema} ms con mascotas, ${sin} ms escondidas; ${consumo}" | tee -a shots/bateria.txt
 echo "::notice title=Batería (pantalla encendida)::app ${on} ms; sistema ${sistema} ms con mascotas vs ${sin} ms escondidas (en 30 s); ${consumo}"
 echo "::notice title=Batería (pantalla apagada)::${off} ms de CPU en 30 s"
