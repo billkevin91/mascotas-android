@@ -138,7 +138,8 @@ adb logcat -d -s Mascotas > shots/reacciones.txt
 # Crear una mascota desde un dibujo (una bolita con ojos sobre fondo blanco) y soltarla
 antes_crear=$(ventanas contar $PKG)
 adb logcat -c
-adb shell am start -n $PKG/.MainActivity --ez crear_prueba true
+# Tarea nueva (NEW_TASK + CLEAR_TASK): si no, Android sólo trae al frente la pantalla abierta
+adb shell am start -n $PKG/.MainActivity -f 0x10008000 --ez crear_prueba true
 sleep 2
 adb shell input keyevent KEYCODE_HOME
 creada=""
