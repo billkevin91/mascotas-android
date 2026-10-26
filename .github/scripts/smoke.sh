@@ -89,21 +89,21 @@ done
 adb exec-out screencap -p > shots/caricia.png
 echo "::notice title=Caricia::$corazones ventanas de corazones tras tocar una mascota (intento $intento)"
 if [ "$corazones" -lt 1 ]; then echo "::error::Al tocar una mascota no salieron corazones"; fail=1; fi
-# Comida desde el atajo del icono: cae, van a por ella y se la comen
+# Comida desde el atajo del icono: cae, van a por ella y se la comen (lo cuenta el registro de la app)
+adb logcat -c
 adb shell am start -n $PKG/.AccionActivity -a com.billkevin91.mascota.atajo.COMER
-sleep 3
-adb exec-out screencap -p > shots/comida.png
-comida=$(ventanas contar Comida-mascota)
 comida_en=-1
-if [ "$comida" -ge 1 ]; then
-  for s in $(seq 5 5 120); do
-    sleep 5
-    if [ "$(ventanas contar Comida-mascota)" -eq 0 ]; then comida_en=$s; break; fi
-  done
-fi
-adb exec-out screencap -p > shots/comida_despues.png
-echo "::notice title=Comida::aparecieron $comida; se la comieron a los ${comida_en} s (-1 = no)"
-if [ "$comida" -lt 1 ]; then echo "::error::El atajo Dar de comer no echó comida"; fail=1; fi
+for s in $(seq 1 120); do
+  sleep 1
+  [ $s -eq 2 ] && adb exec-out screencap -p > shots/comida.png
+  if adb logcat -d -s Mascotas | grep -q "se la comió"; then comida_en=$s; break; fi
+done
+adb logcat -d -s Mascotas > shots/comida.txt
+cat shots/comida.txt
+cae=$(grep -c "comida: cae" shots/comida.txt)
+quien=$(grep -o "se la comió .*" shots/comida.txt | head -1)
+echo "::notice title=Comida::cayó $cae; $quien a los ${comida_en} s (-1 = nadie)"
+if [ "$cae" -lt 1 ]; then echo "::error::El atajo Dar de comer no echó comida"; fail=1; fi
 if [ "$comida_en" -lt 0 ]; then echo "::error::Nadie se comió la comida en 2 minutos"; fail=1; fi
 hz=100
 if [ -z "$c0$c1" ] || [ -z "$c2" ] || [ -z "$c3" ]; then

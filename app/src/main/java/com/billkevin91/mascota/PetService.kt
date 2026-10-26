@@ -55,6 +55,7 @@ class PetService : Service() {
         const val EXTRA_LOOP = "loop"
         private const val CHANNEL = "mascotas"
         private const val MAX_PETS = 12
+        private const val TAG = "Mascotas"
         private const val MAX_FOOD = 5
         private const val MAX_HEARTS = 8
         /** Con el dedo quieto encima este tiempo, se levanta (como antes al tocarla). */
@@ -230,6 +231,7 @@ class PetService : Service() {
             }
             ACTION_FEED -> {
                 if (pets.none { !it.test && !it.brain.isChild }) {
+                    android.util.Log.i(TAG, "comida: no hay mascotas")
                     if (pets.isEmpty()) stopSelf()
                     return START_STICKY
                 }
@@ -540,6 +542,7 @@ class PetService : Service() {
             params.x = x.roundToInt()
             params.y = y.roundToInt()
             attached = runCatching { wm.addView(view, params) }.isSuccess
+            android.util.Log.i(TAG, "comida: cae $emoji (${if (attached) "en pantalla" else "no se pudo mostrar"})")
             if (!attached) return
             foods.add(this)
             handler.postDelayed(expire, 3 * 60_000L)
@@ -677,6 +680,7 @@ class PetService : Service() {
                 brain.target = food?.let { Target(it.centerX().toDouble() / scale, it.bottom().toDouble() / scale) }
                 val delay = brain.tick()
                 if (brain.takeArrived()) {
+                    android.util.Log.i(TAG, "comida: se la comió $folder")
                     food?.remove()
                     showHearts(centerX().roundToInt(), params.y)
                 }
@@ -896,6 +900,7 @@ class PetService : Service() {
             private val hold = Runnable { if (attached && !grabbed) startGrab() }
             private val caress = Runnable {
                 if (attached && !paused && brain.caress()) {
+                    android.util.Log.i(TAG, "caricia: $folder hace ${brain.animationName}")
                     showHearts(centerX().roundToInt(), params.y)
                     handler.removeCallbacks(tick)
                     handler.post(tick)
