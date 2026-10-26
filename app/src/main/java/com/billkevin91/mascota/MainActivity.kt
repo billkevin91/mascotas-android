@@ -212,6 +212,8 @@ class MainActivity : Activity() {
             return true
         }
         val release = intent.getStringExtra("soltar") ?: return false
+        // Antes de soltarlas (el servicio lo mira al arrancar). --ez medir true: el servicio cuenta cada 30 s lo que gasta (ver PetService.measure)
+        if (intent.hasExtra("medir")) prefs.edit().putBoolean("medir", intent.getBooleanExtra("medir", false)).commit()
         release.split(',').filter { PetLibrary.exists(this, it) }.forEach { PetService.add(this, it, size) }
         if (intent.hasExtra("nombres")) prefs.edit().putBoolean(PREF_NAMES, intent.getBooleanExtra("nombres", false)).apply()
         if (intent.hasExtra("sonido")) prefs.edit().putBoolean(PREF_SOUND, intent.getBooleanExtra("sonido", false)).apply()

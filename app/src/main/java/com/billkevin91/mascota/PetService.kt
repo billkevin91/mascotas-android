@@ -115,6 +115,19 @@ class PetService : Service() {
     private val screen = Area()
     private val foods = ArrayList<FoodWindow>()
     private val hearts = ArrayList<View>()
+
+    // Medir el consumo (sólo para la prueba automática: preferencia "medir")
+    private var moves = 0
+    private var draws = 0
+    private var glideFrames = 0
+    private var ticks = 0
+    private val measure = object : Runnable {
+        override fun run() {
+            android.util.Log.i(TAG, "consumo: $moves movimientos de ventana, $draws dibujos, $glideFrames fotogramas de deslizamiento, $ticks pasos en 30 s")
+            moves = 0; draws = 0; glideFrames = 0; ticks = 0
+            handler.postDelayed(this, 30_000)
+        }
+    }
     private var speed = 1.0
     private var testSpeed = 1.0
     private var showNames = false
@@ -186,6 +199,7 @@ class PetService : Service() {
         checkAwake()
         setLowBattery(batteryIsLow())
         startSensor()
+        if (getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE).getBoolean("medir", false)) handler.postDelayed(measure, 30_000)
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_POWER_CONNECTED)
             addAction(Intent.ACTION_BATTERY_LOW)
@@ -802,6 +816,7 @@ class PetService : Service() {
                 if (!attached) return
                 val t = if (glideMs <= 0) 1f
                 else ((SystemClock.uptimeMillis() - glideStart).toFloat() / glideMs).coerceIn(0f, 1f)
+                glideFrames++
                 place(fromX + (toX - fromX) * t, fromY + (toY - fromY) * t)
                 if (t < 1f) view.postOnAnimation(this)
             }
@@ -816,6 +831,7 @@ class PetService : Service() {
                 val food = if (test || brain.isChild) null else nearestFood(this@PetWindow)
                 brain.target = food?.let { Target(it.centerX().toDouble() / scale, it.bottom().toDouble() / scale) }
                 val delay = brain.tick()
+                ticks++
                 if (brain.takeArrived()) {
                     android.util.Log.i(TAG, "comida: se la comió $folder")
                     food?.remove()
@@ -988,6 +1004,7 @@ class PetService : Service() {
             val x = (brain.x * scale).toFloat()
             val y = ((brain.y + brain.offsetY) * scale).toFloat()
             view.invalidate()
+            draws++
             if (addNow) {
                 toX = x; toY = y
                 params.x = x.roundToInt()
@@ -1017,6 +1034,7 @@ class PetService : Service() {
             if (nx == params.x && ny == params.y) return
             params.x = nx
             params.y = ny
+            moves++
             runCatching { wm.updateViewLayout(view, params) }
             if (label != null) refreshLabel()
         }

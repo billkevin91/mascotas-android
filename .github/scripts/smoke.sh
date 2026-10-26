@@ -35,13 +35,19 @@ if ! adb shell pidof $PKG > /dev/null; then
   fail=1
 fi
 # Batería: tiempo de CPU de la app en 30 s con la pantalla encendida y en 30 s apagada
-adb shell am start -S -W -n $PKG/.MainActivity --es soltar esheep64,blue_sheep,neko,fox --ez sonido false
+adb shell am start -S -W -n $PKG/.MainActivity --es soltar esheep64,blue_sheep,neko,fox --ez sonido false --ez medir true
 adb shell input keyevent KEYCODE_HOME
 sleep 5
 cpu() { adb shell cat /proc/$(adb shell pidof $PKG | tr -d '\r')/stat | awk '{print $14 + $15}'; }
 antes=$(adb shell dumpsys window windows | awk -v pkg=$PKG '/Window #/ {mine = index($0, pkg) > 0} mine && /mViewVisibility=0x0/ {n++} END {print n+0}')
 echo "Mascotas visibles antes de apagar la pantalla: $antes" | tee shots/bateria.txt
+# También el proceso del sistema: mover las ventanas de las mascotas lo hace él
+sys_cpu() { adb shell cat /proc/$(adb shell pidof system_server | tr -d '\r')/stat | awk '{print $14 + $15}'; }
+s0=$(sys_cpu)
 c0=$(cpu); sleep 30; c1=$(cpu)
+s1=$(sys_cpu)
+sleep 2
+consumo=$(adb logcat -d -s Mascotas | grep -o "consumo: .*" | tail -1)
 adb shell input keyevent KEYCODE_SLEEP
 sleep 3; c2=$(cpu); sleep 30; c3=$(cpu)
 # Al encender y desbloquear tienen que volver a verse
@@ -199,7 +205,9 @@ on=$(( (c1 - c0) * 1000 / hz )); off=$(( (c3 - c2) * 1000 / hz ))
   echo "CPU de la app en 30 s con 4 mascotas y la pantalla encendida: ${on} ms ($(( on / 300 ))% de un núcleo)"
   echo "CPU de la app en 30 s con la pantalla apagada: ${off} ms"
 } | tee -a shots/bateria.txt
-echo "::notice title=Batería (pantalla encendida)::${on} ms de CPU en 30 s"
+sistema=$(( (${s1:-0} - ${s0:-0}) * 1000 / hz ))
+echo "Sistema (mover ventanas, dibujar) en esos 30 s: ${sistema} ms; ${consumo}" | tee -a shots/bateria.txt
+echo "::notice title=Batería (pantalla encendida)::app ${on} ms + sistema ${sistema} ms de CPU en 30 s; ${consumo}"
 echo "::notice title=Batería (pantalla apagada)::${off} ms de CPU en 30 s"
 if [ "$off" -gt 300 ]; then echo "::error::Con la pantalla apagada la app sigue gastando CPU (${off} ms en 30 s)"; fail=1; fi
 adb shell dumpsys activity services $PKG > shots/servicio.txt
