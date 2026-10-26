@@ -2,7 +2,7 @@
 
 Todos los cambios de la app, del más nuevo al más antiguo.
 
-## [Sin publicar]
+## 1.2 — 2026-10-26
 
 ### Añadido
 - **Caricias**: un toque a una mascota la alegra (baila, saluda, saca la lengua, toca la bocina...
