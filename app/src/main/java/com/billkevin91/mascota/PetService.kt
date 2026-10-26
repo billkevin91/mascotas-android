@@ -798,10 +798,16 @@ class PetService : Service() {
 
         fun centerX() = params.x + params.width / 2f
 
-        /** Le sale una flor (la cría de su movimiento de comer), para la prueba automática. */
+        /**
+         * Le sale una flor de las que se quedan creciendo (bloom; las "flower" son las que se come al
+         * momento), mejor una que salga a su lado. Para la prueba automática.
+         */
         fun sproutFlower() {
             val def = brain.def
-            val c = def.children.values.flatten().firstOrNull { def.animations[it.next]?.name?.lowercase()?.contains("flower") == true } ?: return
+            val kids = def.children.values.flatten()
+            fun named(c: ChildDef, s: String) = def.animations[c.next]?.name?.lowercase()?.contains(s) == true
+            val c = kids.firstOrNull { named(it, "bloom") && "imageY" in it.y.text } ?: kids.firstOrNull { named(it, "bloom") }
+                ?: kids.firstOrNull { named(it, "flower") } ?: return
             val cb = PetBrain(def, brain.area, brain.frameW, brain.frameH, ChildRequest(c, brain.x, brain.y, !brain.movingLeft, 1, 50))
             cb.scale = scale
             cb.others = ::allBrains
