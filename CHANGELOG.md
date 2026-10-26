@@ -2,6 +2,17 @@
 
 Todos los cambios de la app, del más nuevo al más antiguo.
 
+## 1.3 — 2026-10-26
+
+### Añadido
+- **Según la hora** (casilla en la pantalla principal, encendida de serie): de noche (22:00–7:00)
+  duermen unas 4 veces más a menudo y más rato; por la mañana (7:00–11:00) casi no duermen y corren
+  y saltan el doble. Sólo cambia qué movimiento eligen al terminar otro, entre los que su XML
+  ya permite: caídas, paredes y escenas como el baño siguen igual.
+- Pruebas: 30 minutos simulados de cada mascota a las 23:00, 14:00 y 8:00 (de noche duermen
+  entre un 33 % y un 79 % del tiempo, de día 8–23 %, por la mañana 0–3 %); con la casilla apagada
+  hacen exactamente lo mismo que antes; de noche también se despiertan para ir a la comida.
+
 ## 1.2 — 2026-10-26
 
 ### Añadido

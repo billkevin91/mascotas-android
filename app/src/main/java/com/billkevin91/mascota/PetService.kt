@@ -119,6 +119,7 @@ class PetService : Service() {
     private var testSpeed = 1.0
     private var showNames = false
     private var soundOn = false
+    private var followClock = true
     private lateinit var sounds: PetSounds
     /** Probando movimientos: sólo se ve y se mueve la mascota de prueba. */
     private var testMode = false
@@ -185,12 +186,14 @@ class PetService : Service() {
         val wasOn = soundOn
         soundOn = prefs.getBoolean(MainActivity.PREF_SOUND, false)
         saverOn = prefs.getBoolean(MainActivity.PREF_SAVER, false)
+        followClock = prefs.getBoolean(MainActivity.PREF_CLOCK, true)
         if (::wm.isInitialized) readPowerSave()
         if (!soundOn && ::sounds.isInitialized) sounds.stopAll()
         // El botón de la notificación dice si el sonido está encendido
         if (wasOn != soundOn && ::wm.isInitialized) startInForeground()
         for (p in pets) {
             p.brain.speed = if (p.test) testSpeed else speed
+            p.brain.followClock = followClock && !p.test
             p.refreshLabel()
         }
     }
@@ -368,6 +371,7 @@ class PetService : Service() {
         brain.scale = scale
         brain.others = ::allBrains
         brain.speed = if (test) testSpeed else speed
+        brain.followClock = followClock && !test
         brain.start()
         val w = PetWindow(brain, sheet, scale, folder, test = test).takeIf { it.show() }
         // Una normal que llega mientras se prueban movimientos (p. ej. "Otra más") espera oculta

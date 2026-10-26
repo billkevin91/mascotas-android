@@ -3,6 +3,7 @@
 // Choques entre mascotas y lanzamiento: Zecheriah (https://github.com/ZechsVariety).
 package com.billkevin91.mascota
 
+import java.util.Calendar
 import kotlin.math.min
 import kotlin.random.Random
 
@@ -68,6 +69,11 @@ class PetBrain(
     var loopId = -1
     /** Velocidad general: 0.5 = la mitad de rápido. */
     var speed = 1.0
+    /** Según la hora: de noche duerme más y por la mañana está más activa (lo pone el servicio). */
+    var followClock = false
+    /** La hora del día (0-23); se puede cambiar en las pruebas. */
+    var hourOfDay: () -> Int = { Calendar.getInstance().get(Calendar.HOUR_OF_DAY) }
+
     /** Comida a la que ir; el servicio la pone (o la quita) antes de cada paso. */
     var target: Target? = null
     /** Movimientos para jugar con ella (caminar, alegrarse, comer). */
@@ -431,6 +437,11 @@ class PetBrain(
             n + (n - a.repeatFrom) * value(a.repeat)
         }
         if (!dragging && !tossing) offsetY = a.start.offsetY.toDouble()
+        // De noche duerme más rato y por la mañana menos (sólo la parte que se repite)
+        if (totalSteps > n && isSleep(a)) {
+            val f = when (dayPart()) { DayPart.NIGHT -> 2.0; DayPart.MORNING -> 0.5; else -> 1.0 }
+            if (f != 1.0) totalSteps = n + ((totalSteps - n) * f).toInt().coerceAtLeast(1)
+        }
 
         startedAnimations.add(id)
         val depth = child?.depth ?: 0
@@ -442,15 +453,67 @@ class PetBrain(
         interval = startInterval
     }
 
-    private fun pickNext(list: List<Next>, where: Only): Int {
-        if (list.isEmpty()) return -1
+    // ---- La hora del día ----
+
+    private enum class DayPart { NIGHT, MORNING, DAY }
+
+    /** Qué parte del día cuenta ahora (siempre DAY si no sigue el reloj, si es una cría o en el modo prueba). */
+    private fun dayPart(): DayPart {
+        if (!followClock || isChild || loopId > 0) return DayPart.DAY
+        return when (hourOfDay()) {
+            in 22..23, in 0..6 -> DayPart.NIGHT
+            in 7..10 -> DayPart.MORNING
+            else -> DayPart.DAY
+        }
+    }
+
+    private fun isSleep(a: Animation) = "sleep" in a.name.lowercase()
+    private fun isLively(a: Animation): Boolean {
+        val n = a.name.lowercase()
+        return listOf("run", "jump", "roll", "chase", "boing", "dance").any { it in n }
+    }
+
+    /** Cuánto más (o menos) apetece este movimiento a esta hora. */
+    private fun mood(id: Int): Double {
+        val a = def.animations[id] ?: return 1.0
+        if (a.id == def.kill) return 1.0
+        return when (dayPart()) {
+            DayPart.NIGHT -> if (isSleep(a)) 4.0 else if (isLively(a)) 0.4 else 1.0
+            DayPart.MORNING -> if (isSleep(a)) 0.25 else if (isLively(a)) 2.0 else 1.0
+            DayPart.DAY -> 1.0
+        }
+    }
+
+    /**
+     * Al terminar un movimiento elige el siguiente como desktopPet, pero con la hora del día:
+     * sólo cambia las probabilidades entre los que el XML ya permite (nunca añade ni quita).
+     */
+    private fun pickNatural(list: List<Next>, where: Only): Int {
+        if (dayPart() == DayPart.DAY) return pickNext(list, where)
+        val valid = validFor(list, where).filter { it.probability > 0 }
+        if (valid.isEmpty()) return -1
+        val weights = valid.map { it.probability * mood(it.id) }
+        var r = rnd.nextDouble() * weights.sum()
+        for ((i, n) in valid.withIndex()) {
+            r -= weights[i]
+            if (r <= 0) return n.id
+        }
+        return valid.last().id
+    }
+
+    private fun validFor(list: List<Next>, where: Only): List<Next> {
         val horizontalPlus = where == Only.HORIZONTAL || where == Only.WINDOW || where == Only.TASKBAR
         val verticalPlus = where == Only.VERTICAL || where == Only.WINDOW_SIDE || where == Only.PET_SIDE
-        val valid = list.filter {
+        return list.filter {
             it.only == Only.NONE || it.only == where ||
                 (horizontalPlus && it.only == Only.HORIZONTAL_PLUS) ||
                 (verticalPlus && it.only == Only.VERTICAL_PLUS)
         }
+    }
+
+    private fun pickNext(list: List<Next>, where: Only): Int {
+        if (list.isEmpty()) return -1
+        val valid = validFor(list, where)
         val total = valid.sumOf { it.probability }
         if (total <= 0) return -1
         val r = rnd.nextInt(1, total + 1)
@@ -552,7 +615,7 @@ class PetBrain(
             val outside = isOutside(partly = false)
             val nextAnimation = when {
                 outside -> -1
-                else -> pickNext(a.onEnd, if (y + frameH + dy >= area.bottom - 2) Only.TASKBAR else Only.NONE)
+                else -> pickNatural(a.onEnd, if (y + frameH + dy >= area.bottom - 2) Only.TASKBAR else Only.NONE)
             }
             if (a.id == def.kill) {
                 killFade -= 0.1

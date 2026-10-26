@@ -33,6 +33,7 @@ class MainActivity : Activity() {
         const val PREF_TEST_SPEED = "test_speed"
         const val PREF_SOUND = "sound"
         const val PREF_SAVER = "battery_saver"
+        const val PREF_CLOCK = "follow_clock"
         private const val IMPORT = 7
         private val SIZES = listOf("Pequeña" to 0.75f, "Mediana" to 1f, "Grande" to 1.5f, "Enorme" to 2f)
         private val SPEEDS = listOf("Lenta" to 0.5f, "Tranquila" to 0.75f, "Normal" to 1f, "Rápida" to 1.25f)
@@ -142,6 +143,12 @@ class MainActivity : Activity() {
             text = "Sonidos de las mascotas (algunas traen: las ovejas de colores, los zorritos...)"
             isChecked = prefs.getBoolean(PREF_SOUND, false)
             setOnCheckedChangeListener { _, on -> prefs.edit().putBoolean(PREF_SOUND, on).apply() }
+            setPadding(0, dp(8), 0, dp(8))
+        })
+        col.addView(android.widget.CheckBox(this).apply {
+            text = "Según la hora: de noche duermen más y por la mañana están más activas"
+            isChecked = prefs.getBoolean(PREF_CLOCK, true)
+            setOnCheckedChangeListener { _, on -> prefs.edit().putBoolean(PREF_CLOCK, on).apply() }
             setPadding(0, dp(8), 0, dp(8))
         })
         col.addView(android.widget.CheckBox(this).apply {

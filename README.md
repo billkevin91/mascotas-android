@@ -19,6 +19,7 @@ Es un port a Kotlin del motor de [desktopPet](https://github.com/Adrianotiger/de
 - **Editar mascotas**: cambia los dibujos, la velocidad, el avance y las repeticiones de cada
   movimiento, con vista previa en vivo. Las incluidas se guardan como copia "(mía)".
 - **Sonidos** (si la mascota los trae): se encienden y apagan en la pantalla principal o en la notificación.
+- **Según la hora**: de noche duermen más y por la mañana están más activas (se puede apagar).
 - **Batería**: con la pantalla apagada o bloqueada se esperan quietas; el interruptor **Ahorro de batería**
   (o el del teléfono) hace que se muevan a pasos, sin deslizarse.
 - **Importar mascotas**: cualquier `animations.xml` de desktopPet (las 26 de su carpeta
