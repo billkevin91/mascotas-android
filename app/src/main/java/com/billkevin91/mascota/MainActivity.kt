@@ -83,7 +83,6 @@ class MainActivity : Activity() {
     private lateinit var grid: LinearLayout
     private lateinit var removeButton: Button
     private lateinit var soundBox: android.widget.CheckBox
-    private lateinit var notifyBox: android.widget.CheckBox
     private var pet = PetLibrary.BUNDLED.first()
     private var size = 1f
 
@@ -151,13 +150,6 @@ class MainActivity : Activity() {
             text = "Reaccionan al teléfono: se alegran al cargarlo (⚡) y les entra sueño con la batería baja (😴)"
             isChecked = prefs.getBoolean(PREF_REACT, true)
             setOnCheckedChangeListener { _, on -> prefs.edit().putBoolean(PREF_REACT, on).apply() }
-            setPadding(0, dp(8), 0, dp(8))
-        })
-        notifyBox = android.widget.CheckBox(this)
-        col.addView(notifyBox.apply {
-            text = "Reaccionan a las notificaciones (❗)"
-            // Se activa en los ajustes de Android; la casilla sólo muestra si está y lleva allí
-            setOnClickListener { isChecked = notifyAccess(); askNotifyAccess() }
             setPadding(0, dp(8), 0, dp(8))
         })
         col.addView(android.widget.CheckBox(this).apply {
@@ -239,32 +231,6 @@ class MainActivity : Activity() {
         startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
-    /** ¿Tiene "Acceso a notificaciones"? */
-    private fun notifyAccess(): Boolean {
-        val me = android.content.ComponentName(this, AvisosService::class.java)
-        return if (Build.VERSION.SDK_INT >= 27) {
-            (getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager).isNotificationListenerAccessGranted(me)
-        } else {
-            Settings.Secure.getString(contentResolver, "enabled_notification_listeners")?.contains(me.flattenToString()) == true
-        }
-    }
-
-    private fun askNotifyAccess() {
-        val on = notifyAccess()
-        AlertDialog.Builder(this)
-            .setTitle(if (on) "Reaccionan a las notificaciones" else "Reaccionar a las notificaciones")
-            .setMessage(
-                (if (on) "Está activado. Para quitarlo, " else "Para activarlo, ") +
-                    "en la pantalla siguiente toca \"Mascotas: reaccionar a notificaciones\". " +
-                    "La app sólo se entera de que llegó una notificación: no lee lo que dice ni de quién es."
-            )
-            .setPositiveButton("Ir a ajustes") { _, _ ->
-                startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-            }
-            .setNegativeButton("Cancelar", null)
-            .show()
-    }
-
     private fun askOverlay() {
         startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
     }
@@ -276,7 +242,6 @@ class MainActivity : Activity() {
     private fun refresh() {
         // También se enciende o apaga desde la notificación
         soundBox.isChecked = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(PREF_SOUND, false)
-        notifyBox.isChecked = notifyAccess()
         val ok = Settings.canDrawOverlays(this)
         permission.text = if (ok) "✔ Permiso concedido" else "Para andar por tu pantalla, la app necesita el permiso \"Mostrar sobre otras apps\"."
         grant.visibility = if (ok) View.GONE else View.VISIBLE

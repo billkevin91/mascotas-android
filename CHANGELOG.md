@@ -2,6 +2,14 @@
 
 Todos los cambios de la app, del más nuevo al más antiguo.
 
+## 1.5.1 — 2026-10-26
+
+### Quitado
+- **Reaccionar a las notificaciones**: para enterarse de que llegaba una, la app declaraba un
+  servicio de "acceso a notificaciones", y Google Play Protect bloquea la instalación (desde el
+  navegador o un archivo) de cualquier app que lo declare, aunque no lo use para leer nada.
+  Las reacciones al cargador y a la batería baja siguen.
+
 ## 1.5 — 2026-10-26
 
 ### Añadido

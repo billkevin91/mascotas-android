@@ -77,15 +77,6 @@ class PetService : Service() {
             if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(i) else context.startService(i)
         }
 
-        /** El servicio que está en marcha (para avisarle de las notificaciones desde [AvisosService]). */
-        @Volatile private var running: PetService? = null
-        private val main = Handler(Looper.getMainLooper())
-
-        /** Llegó una notificación de otra app (no se sabe ni se lee cuál). */
-        fun notified() {
-            main.post { running?.react(Reaction.NOTIFY) }
-        }
-
         /** Cae comida desde arriba; las mascotas van a comérsela. */
         fun feed(context: Context) = send(context, ACTION_FEED)
 
@@ -134,13 +125,13 @@ class PetService : Service() {
     private var testMode = false
     /** Pantalla apagada o bloqueada: nadie las ve, así que se esperan quietas (ahorra batería). */
     private var asleep = false
-    /** Reaccionar al teléfono (cargador, batería baja, notificaciones). */
+    /** Reaccionar al teléfono (cargador y batería baja). */
     private var reactOn = true
     /** Android avisó de batería baja (y aún no de que se recuperó). */
     private var lowBattery = false
     private val lastReaction = HashMap<Reaction, Long>()
 
-    enum class Reaction { CHARGE, LOW_BATTERY, NOTIFY }
+    enum class Reaction { CHARGE, LOW_BATTERY }
 
     /** Ahorro de batería (el de la app o el del sistema): sin deslizamiento entre pasos (mueve menos la ventana). */
     private var powerSave = false
@@ -188,7 +179,6 @@ class PetService : Service() {
         readPowerSave()
         checkAwake()
         setLowBattery(batteryIsLow())
-        running = this
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_POWER_CONNECTED)
             addAction(Intent.ACTION_BATTERY_LOW)
@@ -219,13 +209,13 @@ class PetService : Service() {
 
     /**
      * Las mascotas reaccionan al teléfono: con el cargador se alegran (⚡), con la batería baja
-     * les entra sueño (😴) y con una notificación se sorprenden (❗). Sólo si se ven y está activado.
+     * les entra sueño (😴). Sólo si se ven y está activado.
      */
     fun react(kind: Reaction) {
         if (!reactOn || asleep || testMode) return
         val now = SystemClock.uptimeMillis()
-        // Una ráfaga de notificaciones no las vuelve locas
-        val gap = if (kind == Reaction.NOTIFY) 10_000L else 3_000L
+        // Enchufar y desenchufar seguido no las vuelve locas
+        val gap = 3_000L
         if (now - (lastReaction[kind] ?: -gap) < gap) return
         lastReaction[kind] = now
         android.util.Log.i(TAG, "reacción: $kind")
@@ -234,7 +224,7 @@ class PetService : Service() {
             val reacted = if (kind == Reaction.LOW_BATTERY) p.brain.doze() else p.brain.caress()
             if (!reacted) continue
             p.restart()
-            val emoji = when (kind) { Reaction.CHARGE -> "⚡"; Reaction.LOW_BATTERY -> "😴"; Reaction.NOTIFY -> "❗" }
+            val emoji = when (kind) { Reaction.CHARGE -> "⚡"; Reaction.LOW_BATTERY -> "😴" }
             showHearts(p.centerX().roundToInt(), p.top(), emoji)
         }
     }
@@ -369,7 +359,6 @@ class PetService : Service() {
     override fun onDestroy() {
         getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(prefsListener)
         runCatching { unregisterReceiver(screenReceiver) }
-        if (running === this) running = null
         removeAll()
         sounds.stopAll()
         handler.removeCallbacksAndMessages(null)

@@ -105,7 +105,7 @@ quien=$(grep -o "se la comió .*" shots/comida.txt | head -1)
 echo "::notice title=Comida::cayó $cae; $quien a los ${comida_en} s (-1 = nadie)"
 if [ "$cae" -lt 1 ]; then echo "::error::El atajo Dar de comer no echó comida"; fail=1; fi
 if [ "$comida_en" -lt 0 ]; then echo "::error::Nadie se comió la comida en 2 minutos"; fail=1; fi
-# Reacciones al teléfono: cargador, batería baja y una notificación
+# Reacciones al teléfono: cargador y batería baja
 reaccion() {  # reaccion NOMBRE_EN_EL_REGISTRO TÍTULO
   local ok=0
   for s in 1 2 3 4 5 6; do
@@ -129,11 +129,6 @@ adb shell dumpsys battery set level 5
 reaccion LOW_BATTERY "Batería baja"
 adb exec-out screencap -p > shots/bateria_baja.png
 adb shell dumpsys battery reset
-adb shell cmd notification allow_listener $PKG/$PKG.AvisosService
-sleep 3
-adb shell cmd notification post -t "Prueba" prueba "Hola, mascotas"
-reaccion NOTIFY "Notificación"
-adb exec-out screencap -p > shots/notificacion.png
 adb logcat -d -s Mascotas > shots/reacciones.txt
 # Crear una mascota desde un dibujo (una bolita con ojos sobre fondo blanco) y soltarla
 antes_crear=$(ventanas contar $PKG)
