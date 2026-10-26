@@ -807,7 +807,11 @@ class PetService : Service() {
             cb.others = ::allBrains
             cb.speed = brain.speed
             cb.start()
-            if (PetWindow(cb, sheet, scale, folder, parent = this).show()) android.util.Log.i(TAG, "flor: aparece")
+            val w = PetWindow(cb, sheet, scale, folder, parent = this)
+            // Con su sitio en la pantalla, para que la prueba sepa dónde tocar
+            if (w.show()) handler.postDelayed({
+                android.util.Log.i(TAG, "flor: aparece en ${w.centerX().roundToInt()} ${w.top() + w.height() / 2}")
+            }, 3000)
         }
 
         /** Una flor que tocaste: ahora es comida para las demás. */
@@ -826,6 +830,7 @@ class PetService : Service() {
             override val isFlower = true
         }
         fun top() = params.y
+        fun height() = params.height
 
         /** Que el cambio de movimiento se vea ya. */
         fun restart() {

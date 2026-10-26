@@ -43,11 +43,18 @@ antes=$(adb shell dumpsys window windows | awk -v pkg=$PKG '/Window #/ {mine = i
 echo "Mascotas visibles antes de apagar la pantalla: $antes" | tee shots/bateria.txt
 # También el proceso del sistema: mover las ventanas de las mascotas lo hace él
 sys_cpu() { adb shell cat /proc/$(adb shell pidof system_server | tr -d '\r')/stat | awk '{print $14 + $15}'; }
+sleep 10  # que se calme el arranque
 s0=$(sys_cpu)
 c0=$(cpu); sleep 30; c1=$(cpu)
 s1=$(sys_cpu)
 sleep 2
 consumo=$(adb logcat -d -s Mascotas | grep -o "consumo: .*" | tail -1)
+# Lo mismo con las mascotas escondidas (una app a pantalla completa): la diferencia es lo que cuestan
+adb shell am start -n $PKG/.MainActivity -f 0x10008000 --ez pantalla_completa true
+sleep 4
+s2=$(sys_cpu); sleep 30; s3=$(sys_cpu)
+adb shell input keyevent KEYCODE_HOME
+sleep 3
 adb shell input keyevent KEYCODE_SLEEP
 sleep 3; c2=$(cpu); sleep 30; c3=$(cpu)
 # Al encender y desbloquear tienen que volver a verse
@@ -186,8 +193,8 @@ adb logcat -c
 adb shell am start -n $PKG/.MainActivity -f 0x10008000 --es flor blue_sheep
 sleep 6
 adb exec-out screencap -p > shots/flor.png
-# La flor es la ventana de mascota más reciente (la de más arriba en la lista de ventanas)
-flor=$(ventanas centros $PKG | head -1)
+# La app dice dónde quedó la flor
+flor=$(adb logcat -d -s Mascotas | grep -o "flor: aparece en [0-9-]* [0-9-]*" | tail -1 | awk '{print $4, $5}')
 [ -n "$flor" ] && adb shell input tap $flor
 flor_en=-1
 for s in $(seq 1 60); do
@@ -224,8 +231,9 @@ on=$(( (c1 - c0) * 1000 / hz )); off=$(( (c3 - c2) * 1000 / hz ))
   echo "CPU de la app en 30 s con la pantalla apagada: ${off} ms"
 } | tee -a shots/bateria.txt
 sistema=$(( (${s1:-0} - ${s0:-0}) * 1000 / hz ))
-echo "Sistema (mover ventanas, dibujar) en esos 30 s: ${sistema} ms; ${consumo}" | tee -a shots/bateria.txt
-echo "::notice title=Batería (pantalla encendida)::app ${on} ms + sistema ${sistema} ms de CPU en 30 s; ${consumo}"
+sin=$(( (${s3:-0} - ${s2:-0}) * 1000 / hz ))
+echo "Sistema en esos 30 s: ${sistema} ms con mascotas, ${sin} ms escondidas; ${consumo}" | tee -a shots/bateria.txt
+echo "::notice title=Batería (pantalla encendida)::app ${on} ms; sistema ${sistema} ms con mascotas vs ${sin} ms escondidas (en 30 s); ${consumo}"
 echo "::notice title=Batería (pantalla apagada)::${off} ms de CPU en 30 s"
 if [ "$off" -gt 300 ]; then echo "::error::Con la pantalla apagada la app sigue gastando CPU (${off} ms en 30 s)"; fail=1; fi
 adb shell dumpsys activity services $PKG > shots/servicio.txt
