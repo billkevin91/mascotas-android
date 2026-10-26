@@ -19,6 +19,7 @@ Es un port a Kotlin del motor de [desktopPet](https://github.com/Adrianotiger/de
 - **Editar mascotas**: cambia los dibujos, la velocidad, el avance y las repeticiones de cada
   movimiento, con vista previa en vivo. Las incluidas se guardan como copia "(mía)".
 - **Sonidos** (si la mascota los trae): se encienden y apagan en la pantalla principal o en la notificación.
+- **Reaccionan al teléfono**: se alegran al cargarlo, les entra sueño con la batería baja y, si das acceso, se sorprenden con las notificaciones (sin leerlas).
 - **Según la hora**: de noche duermen más y por la mañana están más activas (se puede apagar).
 - **Batería**: con la pantalla apagada o bloqueada se esperan quietas; el interruptor **Ahorro de batería**
   (o el del teléfono) hace que se muevan a pasos, sin deslizarse.
@@ -34,6 +35,7 @@ Es un port a Kotlin del motor de [desktopPet](https://github.com/Adrianotiger/de
 | `EditorActivity.kt`, `PetEdit.kt` | Editor sencillo de movimientos |
 | `PetSounds.kt` | Sonidos de las mascotas |
 | `PetMoves.kt` | Qué movimientos sirven para caminar, alegrarse y comer |
+| `AvisosService.kt` | Se entera de que llegó una notificación (sin leerla) |
 | `AccionActivity.kt` | Atajos del icono: dar de comer y otra mascota |
 | `TestActivity.kt` | Modo prueba: lista de movimientos para verlos uno a uno |
 | `PetLibrary.kt` | Mascotas incluidas e importadas; importar, guardar y borrar |

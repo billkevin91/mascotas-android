@@ -2,6 +2,22 @@
 
 Todos los cambios de la app, del más nuevo al más antiguo.
 
+## 1.4 — 2026-10-26
+
+### Añadido
+- **Reaccionan al teléfono** (casilla, encendida de serie): al enchufar el cargador se alegran (⚡);
+  con el aviso de batería baja de Android se echan a dormir (😴) y duermen como de noche hasta
+  que la batería se recupera.
+- **Reaccionan a las notificaciones** (❗), si le das a la app "Acceso a notificaciones" desde su
+  casilla. La app sólo se entera de que llegó una: no lee qué dice ni de quién es. Como mucho
+  reaccionan una vez cada 10 segundos.
+- Pruebas: con la batería baja duermen 3–5 veces más (las 9 mascotas) y no se duermen en mitad del
+  baño; en el emulador se simulan cargador, batería baja y una notificación.
+
+### Corregido
+- La prueba del sonido en el emulador fallaba a veces aunque sonara (miraba sólo un instante);
+  ahora cuenta cada sonido en el registro de la app.
+
 ## 1.3.1 — 2026-10-26
 
 ### Corregido
