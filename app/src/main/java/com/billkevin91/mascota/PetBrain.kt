@@ -74,6 +74,9 @@ class PetBrain(
     /** La hora del día (0-23); se puede cambiar en las pruebas. */
     var hourOfDay: () -> Int = { Calendar.getInstance().get(Calendar.HOUR_OF_DAY) }
 
+    /** ¿Tiene crías en pantalla (la tina...)? Entonces no se la interrumpe. Lo pone el servicio. */
+    var hasKids: () -> Boolean = { false }
+
     /** Comida a la que ir; el servicio la pone (o la quita) antes de cada paso. */
     var target: Target? = null
     /** Movimientos para jugar con ella (caminar, alegrarse, comer). */
@@ -222,6 +225,8 @@ class PetBrain(
         val a = current ?: return false
         val name = a.name.lowercase()
         if (a.id == def.kill || name == "drag" || name.startsWith("fall")) return false
+        // En medio del baño u otra escena con crías: se vería la cría sola (otra oveja en la tina)
+        if (a.id in moves.withProps || hasKids()) return false
         if (moves.directions.isNotEmpty()) return true
         return onFloor() && a.start.y.constant == 0.0 && a.end.y.constant == 0.0 &&
             a.start.x.constant != null && a.end.x.constant != null
@@ -250,7 +255,8 @@ class PetBrain(
         } else {
             val d = tx - cx
             if (Math.abs(d) <= reach) { arrive(); return }
-            val id = if (moves.run >= 0 && Math.abs(d) > frameW * 1.5) moves.run else moves.walk
+            // Corre sólo si la comida está lejos (más de media pantalla); si no, camina
+            val id = if (moves.run >= 0 && Math.abs(d) > (area.right - area.left) / 2.0) moves.run else moves.walk
             if (id < 0) return
             val a = def.animations.getValue(id)
             // En el XML avanza hacia la izquierda si x es negativa (mirando a la izquierda)
@@ -479,7 +485,7 @@ class PetBrain(
         if (a.id == def.kill) return 1.0
         return when (dayPart()) {
             DayPart.NIGHT -> if (isSleep(a)) 4.0 else if (isLively(a)) 0.4 else 1.0
-            DayPart.MORNING -> if (isSleep(a)) 0.25 else if (isLively(a)) 2.0 else 1.0
+            DayPart.MORNING -> if (isSleep(a)) 0.25 else if (isLively(a)) 1.5 else 1.0
             DayPart.DAY -> 1.0
         }
     }

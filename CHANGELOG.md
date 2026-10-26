@@ -2,6 +2,15 @@
 
 Todos los cambios de la app, del más nuevo al más antiguo.
 
+## 1.3.1 — 2026-10-26
+
+### Corregido
+- **Baño**: acariciar a la oveja mientras estaba en la tina la sacaba de la escena; la tina seguía
+  con su propia oveja dibujada y se veían dos, sin estar sentada. Ahora, en escenas con crías
+  (tina, oveja negra...) sólo salen corazones, y la comida espera a que termine.
+- Por la mañana corren 1,5 veces más (antes el doble), y hacia la comida sólo corren si está a más
+  de media pantalla: se veían caminar demasiado rápido.
+
 ## 1.3 — 2026-10-26
 
 ### Añadido

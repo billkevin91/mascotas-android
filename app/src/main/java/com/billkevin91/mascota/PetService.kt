@@ -633,6 +633,10 @@ class PetService : Service() {
             private set
 
         fun centerX() = params.x + params.width / 2f
+
+        init {
+            brain.hasKids = { pets.any { it.parent === this } }
+        }
         private val view = SpriteView()
         private val params = WindowManager.LayoutParams(
             brain.frameW * scale,
@@ -680,7 +684,7 @@ class PetService : Service() {
                 val animBefore = brain.animationId
                 val restartsBefore = brain.restarts
                 // La comida: no si es de prueba, una cría o está en medio de algo con crías (la tina)
-                val food = if (test || brain.isChild || pets.any { it.parent === this@PetWindow }) null else nearestFood(this@PetWindow)
+                val food = if (test || brain.isChild) null else nearestFood(this@PetWindow)
                 brain.target = food?.let { Target(it.centerX().toDouble() / scale, it.bottom().toDouble() / scale) }
                 val delay = brain.tick()
                 if (brain.takeArrived()) {

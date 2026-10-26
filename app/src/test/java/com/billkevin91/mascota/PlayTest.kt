@@ -65,6 +65,31 @@ class PlayTest {
         assertTrue("No llegaron a la comida en 2 minutos: $slow", slow.isEmpty())
     }
 
+    /** Acariciarla o la comida en medio del baño no la sacan de la tina (se verían dos ovejas). */
+    @Test
+    fun nadaInterrumpeElBano() {
+        val starts = listOf("esheep64" to "batha", "blue_sheep" to "divea", "pink_sheep" to "bath_start")
+        for ((name, start) in starts) for (seed in 1..20) for (feed in listOf(false, true)) {
+            val def = Pets.def(name)
+            val w = World(seed = seed)
+            val b = w.add(def)
+            w.run(2_000)
+            b.play(Pets.id(def, start), loop = false)
+            val rnd = kotlin.random.Random(seed)
+            val food = Target(rnd.nextDouble(30.0, 330.0), w.area.bottom.toDouble())
+            w.run(w.now + 40_000) { p ->
+                if (p !== b) return@run
+                if (rnd.nextInt(6) == 0) p.caress()
+                if (feed) p.target = food
+                p.takeArrived()
+                val tub = w.pets.filter { w.parent[it] === b && !it.finished && "bath" in it.animationName }
+                val mine = p.animationName
+                assertTrue("$name semilla $seed: salió del baño ($mine) con ${tub.map { it.animationName }} en pantalla",
+                    tub.isEmpty() || "bath" in mine || "dive" in mine)
+            }
+        }
+    }
+
     @Test
     fun noLaInterrumpeEnElAire() {
         // Saltando o cayendo no se puede desviar hacia la comida

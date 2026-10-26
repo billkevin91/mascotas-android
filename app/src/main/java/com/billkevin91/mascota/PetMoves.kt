@@ -18,6 +18,11 @@ class PetMoves(def: PetDef) {
     val happy: List<Int>
     /** Comer, sin moverse del sitio. */
     val eat: List<Int>
+    /**
+     * Movimientos de escenas con crías (el baño con su tina, la oveja negra...): no se interrumpen,
+     * porque la cría sigue sola y se verían dos ovejas.
+     */
+    val withProps: Set<Int>
 
     init {
         val all = def.animations.values.sortedBy { it.id }
@@ -47,5 +52,8 @@ class PetMoves(def: PetDef) {
         )
         happy = all.filter { a -> fits(a) && words.any { a.name.lowercase().startsWith(it) } }.map { it.id }
         eat = all.filter { fits(it) && it.name.lowercase().startsWith("eat") }.map { it.id }
+        withProps = all.map { it.id }.filter { id ->
+            def.scene(def.sceneStart(id)).any { !def.children[it].isNullOrEmpty() }
+        }.toSet()
     }
 }

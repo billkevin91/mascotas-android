@@ -30,6 +30,7 @@ class World(val area: Area = portrait(), seed: Int = 1) {
     fun add(def: PetDef, size: Int = 40, start: Boolean = true): PetBrain {
         val b = PetBrain(def, area, size, size, rnd = rnd)
         b.others = { pets }
+        b.hasKids = { pets.any { parent[it] === b } }
         if (start) b.start()
         pets.add(b); clocks[b] = now
         return b
