@@ -9,6 +9,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
+        android:name=".MascotasApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -49,10 +50,21 @@
             android:windowSoftInputMode="adjustResize" />
 
         <activity
+            android:name=".SettingsActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".MakerActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
             android:exported="false"
             android:label="Crear mascota" />
+
+        <!-- Compartir el animations.xml de una mascota con otra app (sólo lectura, sólo ese archivo) -->
+        <provider
+            android:name=".CompartirProvider"
+            android:authorities="com.billkevin91.mascota.compartir"
+            android:exported="false"
+            android:grantUriPermissions="true" />
 
         <!-- Widget de la pantalla de inicio -->
         <receiver

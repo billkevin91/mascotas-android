@@ -54,7 +54,6 @@ class PetService : Service() {
         const val EXTRA_ANIMATION = "animation"
         const val EXTRA_LOOP = "loop"
         private const val CHANNEL = "mascotas"
-        private const val MAX_PETS = 12
         private const val TAG = "Mascotas"
         private const val MAX_FOOD = 5
         private const val MAX_HEARTS = 8
@@ -120,6 +119,11 @@ class PetService : Service() {
     private var showNames = false
     private var soundOn = false
     private var followClock = true
+    private var maxPets = SettingsActivity.MAX_PETS
+    /** Ocultarlas cuando otra app ocupa toda la pantalla (Ajustes) y si ahora la ocupa. */
+    private var hideFullscreen = true
+    private var fullscreen = false
+    private var sensor: View? = null
     private lateinit var sounds: PetSounds
     /** Probando movimientos: sólo se ve y se mueve la mascota de prueba. */
     private var testMode = false
@@ -172,6 +176,7 @@ class PetService : Service() {
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
         measure(screen, 1)
         sounds = PetSounds(this)
+        sounds.volume = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE).getInt(SettingsActivity.PREF_VOLUME, 60) / 100f
         startInForeground()
         val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
@@ -179,6 +184,7 @@ class PetService : Service() {
         readPowerSave()
         checkAwake()
         setLowBattery(batteryIsLow())
+        startSensor()
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_POWER_CONNECTED)
             addAction(Intent.ACTION_BATTERY_LOW)
@@ -242,6 +248,10 @@ class PetService : Service() {
         saverOn = prefs.getBoolean(MainActivity.PREF_SAVER, false)
         followClock = prefs.getBoolean(MainActivity.PREF_CLOCK, true)
         reactOn = prefs.getBoolean(MainActivity.PREF_REACT, true)
+        maxPets = prefs.getInt(SettingsActivity.PREF_MAX, SettingsActivity.MAX_PETS)
+        if (::sounds.isInitialized) sounds.volume = prefs.getInt(SettingsActivity.PREF_VOLUME, 60) / 100f
+        val hide = prefs.getBoolean(SettingsActivity.PREF_FULLSCREEN, true)
+        if (hide != hideFullscreen) { hideFullscreen = hide; if (::wm.isInitialized) syncPaused() }
         if (::wm.isInitialized) setLowBattery(lowBattery)
         if (::wm.isInitialized) readPowerSave()
         if (!soundOn && ::sounds.isInitialized) sounds.stopAll()
@@ -359,6 +369,7 @@ class PetService : Service() {
     override fun onDestroy() {
         getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(prefsListener)
         runCatching { unregisterReceiver(screenReceiver) }
+        sensor?.let { runCatching { wm.removeView(it) } }
         removeAll()
         sounds.stopAll()
         handler.removeCallbacksAndMessages(null)
@@ -409,14 +420,49 @@ class PetService : Service() {
     }
 
     /** Se mueve sólo lo que se ve: nada con la pantalla apagada; en modo prueba, sólo la de prueba. */
-    private fun shouldRun(p: PetWindow) = !asleep && (!testMode || p.test)
+    private fun shouldRun(p: PetWindow) = !asleep && !(hideFullscreen && fullscreen) && (!testMode || p.test)
+
+    /**
+     * Ventanita invisible de 1 píxel que se entera de si la barra de estado está oculta:
+     * así se sabe que un juego o un vídeo ocupa toda la pantalla.
+     */
+    private fun startSensor() {
+        val v = View(this)
+        val lp = WindowManager.LayoutParams(
+            1, 1, overlayType(),
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            title = "Sensor-mascota"
+            if (Build.VERSION.SDK_INT >= 30) setFitInsetsTypes(0)
+        }
+        if (Build.VERSION.SDK_INT >= 30) {
+            v.setOnApplyWindowInsetsListener { _, insets ->
+                setFullscreen(!insets.isVisible(WindowInsets.Type.statusBars()))
+                insets
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            v.setOnSystemUiVisibilityChangeListener { vis -> setFullscreen(vis and View.SYSTEM_UI_FLAG_FULLSCREEN != 0) }
+        }
+        if (runCatching { wm.addView(v, lp) }.isSuccess) sensor = v
+    }
+
+    private fun setFullscreen(on: Boolean) {
+        if (on == fullscreen) return
+        fullscreen = on
+        android.util.Log.i(TAG, "pantalla completa: $on")
+        syncPaused()
+    }
 
     private fun syncPaused() {
         for (p in ArrayList(pets)) if (shouldRun(p)) p.resume() else p.pause()
     }
 
     private fun addPet(folder: String, size: Float, test: Boolean = false): PetWindow? {
-        if (!test && pets.count { !it.brain.isChild && !it.test } >= MAX_PETS) return null
+        if (!test && pets.count { !it.brain.isChild && !it.test } >= maxPets) return null
         if (!PetLibrary.exists(this, folder)) return null
         val def = defs.getOrPut(folder) { PetLibrary.load(this, folder) }
         val sheet = sheets.getOrPut(folder) { PetLibrary.sheet(def) }

@@ -15,6 +15,8 @@ import kotlin.random.Random
 class PetSounds(private val context: Context) {
     private val playing = ArrayList<MediaPlayer>()
     private val files = HashMap<String, File?>()
+    /** Volumen de 0 a 1 (Ajustes). */
+    var volume = VOLUME
 
     /**
      * [pet] identifica la mascota (para la caché); [animationId] es el movimiento que empezó.
@@ -23,7 +25,7 @@ class PetSounds(private val context: Context) {
     fun started(pet: String, def: PetDef, animationId: Int, always: Boolean = false) {
         val sound = def.sounds.firstOrNull { it.animationId == animationId } ?: return
         if (!always && Random.nextInt(100) >= sound.probability) return
-        if (playing.size >= MAX_AT_ONCE) return
+        if (playing.size >= MAX_AT_ONCE || volume <= 0f) return
         val file = files.getOrPut("$pet/$animationId") { save(pet, sound) } ?: return
         runCatching {
             var loops = sound.loop
@@ -35,7 +37,7 @@ class PetSounds(private val context: Context) {
                     .build()
             )
             mp.setDataSource(file.path)
-            mp.setVolume(VOLUME, VOLUME)
+            mp.setVolume(volume, volume)
             mp.setOnCompletionListener {
                 if (loops-- > 0) it.start() else release(it)
             }

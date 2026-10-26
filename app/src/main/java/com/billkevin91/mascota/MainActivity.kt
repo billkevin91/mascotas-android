@@ -83,6 +83,8 @@ class MainActivity : Activity() {
     private lateinit var grid: LinearLayout
     private lateinit var removeButton: Button
     private lateinit var soundBox: android.widget.CheckBox
+    /** La mascota que se está guardando como archivo (mientras eliges dónde). */
+    private var savingId: String? = null
     private var pet = PetLibrary.BUNDLED.first()
     private var size = 1f
 
@@ -146,24 +148,6 @@ class MainActivity : Activity() {
             setOnCheckedChangeListener { _, on -> prefs.edit().putBoolean(PREF_SOUND, on).apply() }
             setPadding(0, dp(8), 0, dp(8))
         })
-        col.addView(android.widget.CheckBox(this).apply {
-            text = "Reaccionan al teléfono: se alegran al cargarlo (⚡) y les entra sueño con la batería baja (😴)"
-            isChecked = prefs.getBoolean(PREF_REACT, true)
-            setOnCheckedChangeListener { _, on -> prefs.edit().putBoolean(PREF_REACT, on).apply() }
-            setPadding(0, dp(8), 0, dp(8))
-        })
-        col.addView(android.widget.CheckBox(this).apply {
-            text = "Según la hora: de noche duermen más y por la mañana están más activas"
-            isChecked = prefs.getBoolean(PREF_CLOCK, true)
-            setOnCheckedChangeListener { _, on -> prefs.edit().putBoolean(PREF_CLOCK, on).apply() }
-            setPadding(0, dp(8), 0, dp(8))
-        })
-        col.addView(android.widget.CheckBox(this).apply {
-            text = "Ahorro de batería: se mueven a pasos, sin deslizarse (también se activa solo con el ahorro de batería del teléfono)"
-            isChecked = prefs.getBoolean(PREF_SAVER, false)
-            setOnCheckedChangeListener { _, on -> prefs.edit().putBoolean(PREF_SAVER, on).apply() }
-            setPadding(0, dp(8), 0, dp(8))
-        })
 
         col.addView(View(this), LinearLayout.LayoutParams(1, dp(16)))
         col.addView(button("Soltar en la pantalla") { release() }.apply {
@@ -176,6 +160,7 @@ class MainActivity : Activity() {
         col.addView(text("Toca una mascota para acariciarla. La comida se puede arrastrar: " +
             "irán a por ella. También desde el icono de la app (mantenlo pulsado).").apply { textSize = 13f; alpha = 0.7f })
         col.addView(button("Quitar todas") { PetService.clear(this) })
+        col.addView(button("⚙ Ajustes") { startActivity(Intent(this, SettingsActivity::class.java)) })
         col.addView(button("Probar movimientos") { startActivity(Intent(this, TestActivity::class.java)) })
         col.addView(button("Editar mascotas") { startActivity(Intent(this, EditorActivity::class.java)) })
         col.addView(button("🎨 Crear mascota desde un dibujo") { startActivity(Intent(this, MakerActivity::class.java)) })
@@ -186,6 +171,20 @@ class MainActivity : Activity() {
 
         // Android 15 dibuja detrás de las barras: deja espacio para ellas
         setContentView(ScrollView(this).apply { fitsSystemWindows = true; addView(col) })
+
+        // Prueba automática de compartir: --es compartir esheep64
+        intent.getStringExtra("compartir")?.let { runCatching { PetShare.share(this, it) }; return }
+        // Prueba automática de "ocultarlas a pantalla completa": --ez pantalla_completa true
+        if (intent.getBooleanExtra("pantalla_completa", false)) {
+            if (Build.VERSION.SDK_INT >= 30) {
+                window.insetsController?.hide(android.view.WindowInsets.Type.statusBars() or android.view.WindowInsets.Type.navigationBars())
+            } else {
+                @Suppress("DEPRECATION")
+                window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+            }
+            return
+        }
 
         // Para la prueba automática: adb shell am start ... --es soltar esheep64,neko
         // Prueba automática del creador: adb shell am start ... --ez crear_prueba true
@@ -319,6 +318,12 @@ class MainActivity : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         val uri = data?.data ?: return
+        if (requestCode == PetShare.SAVE_REQUEST && resultCode == RESULT_OK) {
+            val id = savingId ?: return
+            val ok = runCatching { PetShare.saveTo(this, id, uri) }.isSuccess
+            Toast.makeText(this, if (ok) "Guardada" else "No se pudo guardar", Toast.LENGTH_SHORT).show()
+            return
+        }
         if (requestCode != IMPORT || resultCode != RESULT_OK) return
         Toast.makeText(this, "Importando...", Toast.LENGTH_SHORT).show()
         Thread {
@@ -366,11 +371,21 @@ class MainActivity : Activity() {
                 maxLines = 2
             })
             setOnClickListener { pet = folder; save(); refresh() }
-            if (!e.bundled) setOnLongClickListener {
-                AlertDialog.Builder(this@MainActivity).setTitle("¿Quitar ${e.name}?")
-                    .setMessage("Se borra la mascota importada de este teléfono.")
-                    .setPositiveButton("Quitar") { _, _ -> delete(listOf(folder)) }
-                    .setNegativeButton("Cancelar", null).show()
+            // Mantener pulsada: compartirla, guardarla como archivo o (si es tuya) quitarla
+            setOnLongClickListener {
+                val options = arrayListOf("Compartir", "Guardar como archivo")
+                if (!e.bundled) options.add("Quitar")
+                AlertDialog.Builder(this@MainActivity).setTitle(e.name)
+                    .setItems(options.toTypedArray()) { _, which ->
+                        when (which) {
+                            0 -> runCatching { PetShare.share(this@MainActivity, folder) }
+                            1 -> { savingId = folder; PetShare.askWhere(this@MainActivity, folder) }
+                            2 -> AlertDialog.Builder(this@MainActivity).setTitle("¿Quitar ${e.name}?")
+                                .setMessage("Se borra la mascota importada de este teléfono.")
+                                .setPositiveButton("Quitar") { _, _ -> delete(listOf(folder)) }
+                                .setNegativeButton("Cancelar", null).show()
+                        }
+                    }.show()
                 true
             }
         }

@@ -163,6 +163,16 @@ class EditorActivity : Activity() {
             setOnClickListener { save(test = false) }
         }, LinearLayout.LayoutParams(0, dp(52), 1f))
         col.addView(buttons)
+        val shareRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        shareRow.addView(Button(this).apply {
+            text = "Compartir"; isAllCaps = false
+            setOnClickListener { if (savedFirst()) runCatching { PetShare.share(this@EditorActivity, petId) } }
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        shareRow.addView(Button(this).apply {
+            text = "Guardar como archivo"; isAllCaps = false
+            setOnClickListener { if (savedFirst()) PetShare.askWhere(this@EditorActivity, petId) }
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        col.addView(shareRow)
         col.addView(Button(this).apply {
             text = "Deshacer los cambios sin guardar"
             isAllCaps = false
@@ -395,6 +405,12 @@ class EditorActivity : Activity() {
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == PetShare.SAVE_REQUEST && resultCode == RESULT_OK) {
+            val uri = data?.data ?: return
+            val ok = runCatching { PetShare.saveTo(this, petId, uri) }.isSuccess
+            Toast.makeText(this, if (ok) "Guardada" else "No se pudo guardar", Toast.LENGTH_SHORT).show()
+            return
+        }
         if (requestCode != PICK_SOUND || resultCode != RESULT_OK) return
         val uri = data?.data ?: return
         val bytes = runCatching { contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
@@ -529,6 +545,12 @@ class EditorActivity : Activity() {
                 }
             }
         }.start()
+    }
+
+    /** Se comparte lo guardado: si hay cambios sin guardar, avisa. */
+    private fun savedFirst(): Boolean {
+        if (dirty) Toast.makeText(this, "Primero guarda los cambios", Toast.LENGTH_SHORT).show()
+        return !dirty
     }
 
     private fun askDiscard(then: () -> Unit) {

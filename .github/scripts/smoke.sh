@@ -150,6 +150,31 @@ adb logcat -d -s Mascotas > shots/creada.txt
 echo "::notice title=Crear desde un dibujo::${creada:-no se creó}; mascotas visibles $antes_crear → $despues_crear"
 if [ -z "$creada" ]; then echo "::error::No se pudo crear la mascota desde un dibujo"; grep -A5 "crear:" shots/creada.txt; fail=1; fi
 if [ "$despues_crear" -le "$antes_crear" ]; then echo "::error::La mascota creada no apareció en pantalla"; fail=1; fi
+# Ajustes: ocultarlas cuando otra app ocupa toda la pantalla (y volver al salir)
+adb logcat -c
+adb shell am start -n $PKG/.MainActivity -f 0x10008000 --ez pantalla_completa true
+sleep 4
+adb exec-out screencap -p > shots/pantalla_completa.png
+en_completa=$(ventanas contar $PKG)
+adb shell input keyevent KEYCODE_HOME
+sleep 4
+al_salir=$(ventanas contar $PKG)
+adb logcat -d -s Mascotas | grep "pantalla completa" > shots/pantalla_completa.txt
+echo "::notice title=Pantalla completa::visibles a pantalla completa $en_completa, al salir $al_salir; $(tr '\n' ' ' < shots/pantalla_completa.txt)"
+if [ "$en_completa" -ne 0 ]; then echo "::error::A pantalla completa siguen viéndose $en_completa mascotas"; fail=1; fi
+if [ "$al_salir" -lt 1 ]; then echo "::error::Al salir de la pantalla completa no volvieron"; fail=1; fi
+# Compartir: se prepara el archivo y se abre el menú de compartir de Android
+adb logcat -c
+adb shell am start -n $PKG/.MainActivity -f 0x10008000 --es compartir blue_sheep
+sleep 4
+adb exec-out screencap -p > shots/compartir.png
+compartido=$(adb logcat -d -s Mascotas | grep -o "compartir: .*" | head -1)
+menu=$(adb shell dumpsys activity activities | grep -c -i "chooser")
+echo "::notice title=Compartir::${compartido:-no se preparó}; menú de compartir abierto: $menu"
+if [ -z "$compartido" ] || [ "$menu" -lt 1 ]; then echo "::error::No se pudo compartir la mascota"; fail=1; fi
+adb shell input keyevent KEYCODE_BACK
+adb shell input keyevent KEYCODE_HOME
+sleep 2
 # El widget está registrado
 widget=$(adb shell dumpsys appwidget | grep -c "MascotasWidget")
 echo "::notice title=Widget::registrado $widget veces en dumpsys appwidget"
